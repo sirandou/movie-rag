@@ -1,0 +1,24 @@
+name: my-project-2025
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - scipy
+  - scikit-learn
+  - jupyter
+  - ipykernel
+  - pytorch=2.4
+  - pytorch-lightning=2.4
+  - pip:
+    - wandb
+    - black
+    - flake8
+    - mypy
+    - pytest

@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "my-project-2025"
+version = "0.1.0"
+description = "ML project"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+numpy = "^1.24.0"
+pandas = "^2.0.0"
+scikit-learn = "^1.3.0"
+matplotlib = "^3.7.0"
+seaborn = "^0.12.0"
+scipy = "^1.11.0"
+jupyter = "^1.0.0"
+ipykernel = "^6.25.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.7.0"
+flake8 = "^6.0.0"
+mypy = "^1.5.0"
+
+[tool.poetry.group.ml.dependencies]
+torch = "^2.4.0"
+lightning = "^2.4.0"
+wandb = "^0.17.0"
+# tensorflow = "^2.13.0"
+# transformers = "^4.30.0"
+# datasets = "^2.13.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
