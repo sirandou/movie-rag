@@ -1,4 +1,4 @@
-.PHONY: install install-ml install-dev test format clean
+.PHONY: install install-ml install-dev install-all test format clean
 
 # Install dependencies
 install:
@@ -11,6 +11,10 @@ install-ml:
 # Install for development
 install-dev:
 	poetry install --with dev,ml
+
+# Install all dependencies (all groups)
+install-all:
+	poetry install --with dev,ml,rag-agent
 
 # Run tests
 test:
