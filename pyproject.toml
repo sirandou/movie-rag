@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "my-project-2025"
 version = "0.1.0"
-description = "ML project"
-authors = ["Your Name <your.email@example.com>"]
+description = "Movie review agent"
+authors = ["Saghar Irandoust"]
 readme = "README.md"
 packages = [{include = "src"}]
 
@@ -16,6 +16,7 @@ seaborn = "^0.12.0"
 scipy = "^1.11.0"
 jupyter = "^1.0.0"
 ipykernel = "^6.25.0"
+path = "^17.1.1"
 
 [tool.poetry.group.rag-agent.dependencies]
 faiss-cpu = "^1.12.0"
@@ -30,6 +31,7 @@ black = "^23.7.0"
 flake8 = "^6.0.0"
 mypy = "^1.5.0"
 isort = "^5.12.0"
+ruff = "^0.13.2"
 
 [tool.poetry.group.ml.dependencies]
 torch = "^2.4.0"

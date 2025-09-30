@@ -1,1 +1,4 @@
-# my-project-2025
+# Movie review agent
+
+# Dataset
+Follow steps in [datasets/README.MD](datasets/README.md).

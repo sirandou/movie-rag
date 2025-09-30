@@ -216,5 +216,15 @@ wandb/
 *.pkl
 *.h5
 
+# Dataset files (keep folder structure only)
+datasets/*/raw/*
+!datasets/*/raw/.gitkeep
+datasets/*/prep/*
+!datasets/*/prep/.gitkeep
+
 # Notebooks output
 *.ipynb_checkpoints/
+
+# MacOS
+.DS_Store
+*.DS_Store
