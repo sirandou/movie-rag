@@ -218,3 +218,7 @@ wandb/
 
 # Notebooks output
 *.ipynb_checkpoints/
+
+# MacOS
+.DS_Store
+*.DS_Store
