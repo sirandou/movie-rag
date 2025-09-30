@@ -32,7 +32,7 @@ def prep_rotten_tomatoes_data(path: Path) -> pd.DataFrame:
     movies_df = movies_df[movies_df["movie_info"].notna()]
 
     # print stats
-    print(f"Dataset Stats:")
+    print("Dataset Stats:")
     print(f"Total movies: {len(movies_df):,}")
     print(f"Total reviews: {len(reviews_df):,}")
     print(f"Avg reviews per movie: {len(reviews_df) / len(movies_df):.1f}")
@@ -69,7 +69,7 @@ def prep_rotten_tomatoes_data(path: Path) -> pd.DataFrame:
     )
 
     print(f"\nSaved {len(reviews_with_movies):,} reviews to processed/")
-    print(f"Created sample with 10,000 reviews for testing")
+    print("Created sample with 10,000 reviews for testing")
 
     return reviews_with_movies
 
