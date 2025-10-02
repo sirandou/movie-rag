@@ -2,8 +2,6 @@
 
 from typing import Dict, List
 
-import numpy as np
-import pandas as pd
 import tiktoken
 from nltk.tokenize import sent_tokenize
 from sentence_transformers import SentenceTransformer
@@ -60,9 +58,7 @@ class MovieReviewChunker:
         print(f"Created {len(chunks)} fixed-size chunks")
         return chunks
 
-    def chunk_by_sentences(
-        self, text: str, sentences_per_chunk: int = 5
-    ) -> List[Dict]:
+    def chunk_by_sentences(self, text: str, sentences_per_chunk: int = 5) -> List[Dict]:
         """
         Chunk by sentence boundaries (better for reviews)
         """
@@ -180,52 +176,41 @@ class MovieReviewChunker:
         return chunks
 
 
-def analyze_chunks(chunks: List[Dict]) -> None:
-    """Analyze chunk characteristics"""
-    lengths = [len(c["text"]) for c in chunks]
+def chunk(chunking_strategy: str, all_docs: list[dict]) -> list[dict]:
+    """Get list of documents and return list of chunks with added chunk metadata"""
+    # Options: "fixed", "sentence", "semantic"
+    print("\n3. Chunking documents...")
 
-    print(f"Number of chunks: {len(chunks)}")
-    print(f"Avg chunk length: {np.mean(lengths):.0f} chars")
-    print(f"Min/Max length: {min(lengths)}/{max(lengths)} chars")
-    print(f"Std deviation: {np.std(lengths):.0f}")
+    chunker = MovieReviewChunker()
+    all_chunks = []
+    for doc_idx, doc in enumerate(all_docs):
+        # Apply chosen chunking strategy
+        if chunking_strategy == "fixed":
+            chunks = chunker.chunk_fixed_size_tokens(
+                doc["page_content"], chunk_size=200, overlap=50
+            )
+        elif chunking_strategy == "sentence":
+            chunks = chunker.chunk_by_sentences(
+                doc["page_content"], sentences_per_chunk=5
+            )
+        elif chunking_strategy == "semantic":
+            chunks = chunker.chunk_by_semantic_similarity(
+                doc["page_content"], threshold=0.7
+            )
+        else:
+            raise ValueError(f"Unknown chunking strategy: {chunking_strategy}")
 
-    # Show first chunk as example
-    if chunks:
-        print(f"\nExample chunk 1:")
-        print(f"{chunks[0]['text']}")
-        if len(chunks) > 1:
-            print(f"\nExample chunk 2:")
-            print(f"{chunks[1]['text']}")
-
-
-def compare_chunk_strategies(
-    sample_text: str, chunker: MovieReviewChunker
-) -> Dict[str, List[Dict]]:
-    """Compare all three chunking strategies"""
-    results = {}
-
-    # Test each strategy
-    print("\n" + "=" * 50)
-    print("STRATEGY 1: Fixed-Size Token Chunks")
-    print("=" * 50)
-    fixed_chunks = chunker.chunk_fixed_size_tokens(
-        sample_text, chunk_size=200, overlap=50
-    )
-    results["fixed"] = fixed_chunks
-    analyze_chunks(fixed_chunks)
-
-    print("\n" + "=" * 50)
-    print("STRATEGY 2: Sentence-Based Chunks")
-    print("=" * 50)
-    sentence_chunks = chunker.chunk_by_sentences(sample_text, sentences_per_chunk=5)
-    results["sentence"] = sentence_chunks
-    analyze_chunks(sentence_chunks)
-
-    print("\n" + "=" * 50)
-    print("STRATEGY 3: Semantic Chunks")
-    print("=" * 50)
-    semantic_chunks = chunker.chunk_by_semantic_similarity(sample_text, threshold=0.7)
-    results["semantic"] = semantic_chunks
-    analyze_chunks(semantic_chunks)
-
-    return results
+        # Create chunk objects with metadata
+        for chunk_idx, chunk_text in enumerate(chunks):
+            chunk_obj = {
+                "text": chunk_text,
+                "metadata": {
+                    **doc["metadata"],  # Include all document metadata
+                    "doc_id": doc_idx,
+                    "chunk_id": chunk_idx,
+                    "total_chunks": len(chunks),
+                    "chunking_strategy": chunking_strategy,
+                },
+            }
+            all_chunks.append(chunk_obj)
+    return all_chunks
