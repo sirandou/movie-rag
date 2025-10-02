@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "my-project-2025"
+name = "movie-rag"
 version = "0.1.0"
 description = "Movie review agent"
 authors = ["Saghar Irandoust"]
