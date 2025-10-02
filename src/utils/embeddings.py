@@ -1,4 +1,6 @@
 # movie_rag/utils/embeddings.py
+import time
+
 from sentence_transformers import SentenceTransformer
 import numpy as np
 from typing import List, Union, Literal
@@ -99,16 +101,16 @@ class EmbeddingModel:
         """Encode using OpenAI API."""
         # OpenAI has a limit of ~8k tokens per request and 2048 texts per batch
         # For simplicity, we'll batch by number of texts
-        max_batch_size = 2048
+        max_batch_size = 1500
         all_embeddings = []
 
         for i in range(0, len(texts), max_batch_size):
             batch = texts[i : i + max_batch_size]
-
             response = self.client.embeddings.create(input=batch, model=self.model_name)
 
             batch_embeddings = [item.embedding for item in response.data]
             all_embeddings.extend(batch_embeddings)
+            time.sleep(0.1)
 
         return np.array(all_embeddings, dtype="float32")
 

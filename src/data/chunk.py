@@ -18,7 +18,7 @@ class MovieReviewChunker:
         self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
     def chunk_fixed_size_tokens(
-        self, text: str, chunk_size: int = 200, overlap: int = 50
+        self, text: str, chunk_size: int = 200, overlap: int = 50, verbose: bool = False
     ) -> List[Dict]:
         """
         Fixed-size chunking using tiktoken
@@ -41,24 +41,19 @@ class MovieReviewChunker:
             # Decode back to text
             chunk_text = self.tokenizer.decode(chunk_tokens)
 
-            chunks.append(
-                {
-                    "chunk_id": chunk_id,
-                    "text": chunk_text,
-                    "start_token": start,
-                    "end_token": end,
-                    "token_count": len(chunk_tokens),
-                }
-            )
+            chunks.append(chunk_text)
 
             # Move forward with overlap
             start += chunk_size - overlap
             chunk_id += 1
 
-        print(f"Created {len(chunks)} fixed-size chunks")
+        if verbose:
+            print(f"Created {len(chunks)} fixed-size chunks")
         return chunks
 
-    def chunk_by_sentences(self, text: str, sentences_per_chunk: int = 5) -> List[Dict]:
+    def chunk_by_sentences(
+        self, text: str, sentences_per_chunk: int = 5, verbose: bool = False
+    ) -> List[Dict]:
         """
         Chunk by sentence boundaries (better for reviews)
         """
@@ -70,24 +65,12 @@ class MovieReviewChunker:
             reviews = text.split("Review: ")
 
             # Group reviews into chunks
-            chunks.append(
-                {
-                    "chunk_id": 0,
-                    "text": reviews[0].strip(),
-                    "sentence_count": len(sent_tokenize(reviews[0])),
-                }
-            )
+            chunks.append(reviews[0].strip())
             for i in range(1, len(reviews), sentences_per_chunk):
                 chunk_reviews = reviews[i : i + sentences_per_chunk]
                 chunk_text = "Review: " + "Review: ".join(chunk_reviews)
 
-                chunks.append(
-                    {
-                        "chunk_id": i // sentences_per_chunk,
-                        "text": chunk_text.strip(),
-                        "review_count": len(chunk_reviews),
-                    }
-                )
+                chunks.append(chunk_text.strip())
         else:
             # Standard sentence splitting
             sentences = sent_tokenize(text)
@@ -97,19 +80,18 @@ class MovieReviewChunker:
                 chunk_sentences = sentences[i : i + sentences_per_chunk]
                 chunk_text = " ".join(chunk_sentences)
 
-                chunks.append(
-                    {
-                        "chunk_id": i // sentences_per_chunk,
-                        "text": chunk_text,
-                        "sentence_count": len(chunk_sentences),
-                    }
-                )
+                chunks.append(chunk_text)
 
-        print(f"Created {len(chunks)} sentence-based chunks")
+        if verbose:
+            print(f"Created {len(chunks)} sentence-based chunks")
         return chunks
 
     def chunk_by_semantic_similarity(
-        self, text: str, threshold: float = 0.7, min_chunk_size: int = 100
+        self,
+        text: str,
+        threshold: float = 0.7,
+        min_chunk_size: int = 100,
+        verbose: bool = False,
     ) -> List[Dict]:
         """
         Semantic chunking using sentence-transformers
@@ -150,13 +132,7 @@ class MovieReviewChunker:
                 current_embedding = (current_embedding + embeddings[i]) / 2
             else:
                 # Save current chunk and start new one
-                chunks.append(
-                    {
-                        "chunk_id": chunk_id,
-                        "text": " ".join(current_chunk),
-                        "segment_count": len(current_chunk),
-                    }
-                )
+                chunks.append(" ".join(current_chunk))
 
                 current_chunk = [segments[i]]
                 current_embedding = embeddings[i]
@@ -164,22 +140,17 @@ class MovieReviewChunker:
 
         # Don't forget the last chunk
         if current_chunk:
-            chunks.append(
-                {
-                    "chunk_id": chunk_id,
-                    "text": " ".join(current_chunk),
-                    "segment_count": len(current_chunk),
-                }
-            )
+            chunks.append(" ".join(current_chunk))
 
-        print(f"Created {len(chunks)} semantic chunks")
+        if verbose:
+            print(f"Created {len(chunks)} semantic chunks")
         return chunks
 
 
 def chunk(chunking_strategy: str, all_docs: list[dict]) -> list[dict]:
     """Get list of documents and return list of chunks with added chunk metadata"""
     # Options: "fixed", "sentence", "semantic"
-    print("\n3. Chunking documents...")
+    print("\nChunking documents...")
 
     chunker = MovieReviewChunker()
     all_chunks = []
@@ -209,6 +180,7 @@ def chunk(chunking_strategy: str, all_docs: list[dict]) -> list[dict]:
                     "doc_id": doc_idx,
                     "chunk_id": chunk_idx,
                     "total_chunks": len(chunks),
+                    "chunk_len": len(chunk_text),
                     "chunking_strategy": chunking_strategy,
                 },
             }
