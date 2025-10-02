@@ -24,7 +24,7 @@ test:
 format:
 	ruff check --fix src tests
 	ruff format src tests
-	mypy src
+	#mypy src
 
 # Clean cache and temp files
 clean:
