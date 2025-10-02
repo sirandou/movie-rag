@@ -1,4 +1,4 @@
-name: my-project-2025
+name: movie-rag
 channels:
   - pytorch
   - conda-forge

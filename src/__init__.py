@@ -1,1 +1,1 @@
-"""my-project-2025 package"""
+"""movie-rag package"""
