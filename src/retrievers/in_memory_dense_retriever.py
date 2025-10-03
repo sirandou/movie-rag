@@ -20,7 +20,7 @@ class InMemoryDenseRetriever(BaseRetriever):
         self.embedding_model = EmbeddingModel(
             model_name=embedding_model, provider=embedding_provider
         )
-        self.chunks = []
+        self.chunks: list[dict] = []
         self.embeddings = None
 
     def add_documents(self, documents: List[dict]) -> None:
@@ -44,7 +44,17 @@ class InMemoryDenseRetriever(BaseRetriever):
         print(f"✓ Added {len(documents)} chunks to in-memory store")
 
     def search(self, query: str, k: int = 5) -> List[Tuple[dict, float]]:
-        """Search using cosine similarity."""
+        """
+        Search for relevant documents.
+
+        Args:
+            query: Search query
+            k: Number of results to return
+            **kwargs: Additional retriever-specific parameters
+
+        Returns:
+            List of (document/chunk, score) tuples
+        """
         # Embed query
         query_embedding = self.embedding_model.encode(query, show_progress=False)
 
@@ -52,7 +62,7 @@ class InMemoryDenseRetriever(BaseRetriever):
         similarities = cosine_similarity(query_embedding, self.embeddings)[0]
 
         # Get top k
-        top_k_indices = np.argsort(similarities)[::-1][:k]
+        top_k_indices = np.argsort(similarities)[-k:][::-1]
 
         # Return results
         results = []

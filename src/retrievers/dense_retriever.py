@@ -31,7 +31,7 @@ class FaissDenseRetriever(BaseRetriever):
         )
         self.index_type = index_type
         self.index = None
-        self.chunks = []
+        self.chunks: list[dict] = []
 
         print(f"✓ FaissDenseRetriever initialized (index_type={index_type})")
 
@@ -80,7 +80,7 @@ class FaissDenseRetriever(BaseRetriever):
             k: Number of results
 
         Returns:
-            List of (document, distance) tuples
+            List of (document, score) tuples. Here score is negative L2 distance (the lower the closer).
         """
         if self.index is None:
             raise ValueError("No index created. Call add_documents() first.")
@@ -95,7 +95,7 @@ class FaissDenseRetriever(BaseRetriever):
         results = []
         for idx, distance in zip(indices[0], distances[0]):
             doc = self.chunks[idx]
-            score = -float(distance)  # L2 distance, the lower the closer
+            score = -float(distance)
             results.append((doc, score))
 
         return results
