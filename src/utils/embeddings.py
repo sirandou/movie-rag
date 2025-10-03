@@ -1,4 +1,3 @@
-# movie_rag/utils/embeddings.py
 import time
 
 from sentence_transformers import SentenceTransformer

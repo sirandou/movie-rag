@@ -1,6 +1,6 @@
 """Chunking strategies for movie reviews and plots."""
 
-from typing import Dict, List
+from typing import Dict, List, Any
 
 import tiktoken
 from nltk.tokenize import sent_tokenize
@@ -147,7 +147,9 @@ class MovieReviewChunker:
         return chunks
 
 
-def chunk(chunking_strategy: str, all_docs: list[dict]) -> list[dict]:
+def chunk(
+    chunking_strategy: str, all_docs: list[dict], cfg: dict[str, Any] = {}
+) -> list[dict]:
     """Get list of documents and return list of chunks with added chunk metadata"""
     # Options: "fixed", "sentence", "semantic"
     print("\nChunking documents...")
@@ -158,15 +160,18 @@ def chunk(chunking_strategy: str, all_docs: list[dict]) -> list[dict]:
         # Apply chosen chunking strategy
         if chunking_strategy == "fixed":
             chunks = chunker.chunk_fixed_size_tokens(
-                doc["page_content"], chunk_size=200, overlap=50
+                doc["page_content"],
+                chunk_size=cfg.get("chunk_size", 200),
+                overlap=cfg.get("overlap", 50),
             )
         elif chunking_strategy == "sentence":
             chunks = chunker.chunk_by_sentences(
-                doc["page_content"], sentences_per_chunk=5
+                doc["page_content"],
+                sentences_per_chunk=cfg.get("sentences_per_chunk", 5),
             )
         elif chunking_strategy == "semantic":
             chunks = chunker.chunk_by_semantic_similarity(
-                doc["page_content"], threshold=0.7
+                doc["page_content"], threshold=cfg.get("threshold", 0.7)
             )
         else:
             raise ValueError(f"Unknown chunking strategy: {chunking_strategy}")
