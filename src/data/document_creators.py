@@ -106,10 +106,9 @@ def create_review_docs(
 
 def create_poster_docs(
     posters_df: pd.DataFrame,
-    text_metadata_columns: List[str],
     obj_metadata_columns: List[str],
 ) -> List[dict]:
-    """Converts a plots DataFrame into dictionary documents with chosen metadata.
+    """Converts a posters DataFrame into dictionary documents with chosen metadata.
 
     Args:
         posters_df: DataFrame containing movie poster path and metadata
@@ -125,12 +124,46 @@ def create_poster_docs(
     poster_docs = []
 
     for _, row in posters_df.iterrows():
-        text_content = ""
-        for col in text_metadata_columns:
-            if col in row and pd.notna(row[col]):
-                text_content += f"{col.replace('_', ' ').capitalize()}: {row[col]}\n"
+        # Build concise text (CLIP limit: 77 tokens ≈ 60 words)
+        parts = []
+
+        # Title (always include)
+        if "movie_title" in row and pd.notna(row["movie_title"]):
+            parts.append(row["movie_title"])
+
+        # Year (always include)
+        if "release_year" in row and pd.notna(row["release_year"]):
+            parts.append(f"({row['release_year']})")
+
+        # Genres (important for visual style)
+        if "genres" in row and pd.notna(row["genres"]):
+            genres = str(row["genres"])[:50]  # Truncate if too long
+            parts.append(genres)
+
+        # Director (optional, only if space)
+        if "directors" in row and pd.notna(row["directors"]):
+            directors = str(row["directors"]).split(",")[0]  # Just first director
+            parts.append(f"directed by {directors}")
+
+        # Director (optional, only if space)
+        if "actors" in row and pd.notna(row["actors"]):
+            actors = (", ").join(str(row["actors"]).split(",")[:5])  # first 5 actors
+            parts.append(f"actors: {actors}")
+
+        # Join all parts
+        text_content = ". ".join(parts) + "."
+
+        # Safety: Truncate to roughly 60 words (≈75 tokens with safety margin)
+        words = text_content.split()
+        if len(words) > 60:
+            text_content = " ".join(words[:60]) + "..."
+
         # Create Document
-        temp_doc = {"poster_path": row["poster_path"], "text_content": text_content, "metadata": {"source": "poster"}}
+        temp_doc = {
+            "poster_path": row["poster_path"],
+            "text_content": text_content,
+            "metadata": {"source": "poster"},
+        }
         for col in obj_metadata_columns:
             if col in row and pd.notna(row[col]):
                 temp_doc["metadata"][col] = row[col]
@@ -147,7 +180,7 @@ if __name__ == "__main__":
 
     # Get path from user
     parser = argparse.ArgumentParser(
-        description="Create document dictionaries from movie plots and reviews data"
+        description="Create document dictionaries from movie plots, reviews, and posters data"
     )
     parser.add_argument(
         "data_path",
@@ -161,11 +194,15 @@ if __name__ == "__main__":
     # Load data
     plots_df = pd.read_csv(path / "movie_plots.csv")
     reviews_df = pd.read_csv(path / "reviews_w_movies_full.csv")
+    posters_df = pd.read_csv(path / "movie_posters.csv")
 
     # Add year column for date
     plots_df["release_year"] = pd.to_datetime(plots_df["original_release_date"]).dt.year
     reviews_df["release_year"] = pd.to_datetime(
         reviews_df["original_release_date"]
+    ).dt.year
+    posters_df["release_year"] = pd.to_datetime(
+        posters_df["original_release_date"]
     ).dt.year
 
     # Define metadata columns
@@ -211,9 +248,10 @@ if __name__ == "__main__":
     review_docs = create_review_docs(
         reviews_df, text_metadata_cols, obj_metadata_cols, movie_id_cols
     )
+    poster_docs = create_poster_docs(posters_df, obj_metadata_cols)
 
-    all_docs = plot_docs + review_docs
-    print(f"\nTotal documents ready for chunking: {len(all_docs)}")
+    all_docs = plot_docs + review_docs + poster_docs
+    print(f"\nTotal documents: {len(all_docs)}")
 
     # View sample documents
     print("\nOne plot doc:")
@@ -225,3 +263,10 @@ if __name__ == "__main__":
     print(review_docs[0]["metadata"])
     print("\n")
     print(review_docs[0]["page_content"])
+    print("\n\n")
+    print("One poster doc:")
+    print(poster_docs[0]["metadata"])
+    print("\n")
+    print(poster_docs[0]["poster_path"])
+    print("\n")
+    print(poster_docs[0]["text_content"])

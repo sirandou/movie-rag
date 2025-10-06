@@ -16,4 +16,4 @@ The final processed data files are:
 - `movie_plots.csv`: Contains movie plots (retrieved from OMDB) along with the same metadata columns as above. 
 Each row is a movie plot. There are plots for 6257 unique movies, a subset of the movies with reviews.
 - `movie_posters.csv`: Contains movie poster paths (retrieved from OMDB) along with the same metadata columns as above. 
-Each row is a movie poster path. There are poster paths for 6431 unique movies, a subset of the movies with reviews.
+Each row is a movie poster path. There are poster paths for 6079 unique movies, a subset of the movies with reviews.
