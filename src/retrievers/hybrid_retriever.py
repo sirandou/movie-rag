@@ -6,6 +6,7 @@ from src.retrievers.base import BaseRetriever
 from src.retrievers.dense_retriever import FaissDenseRetriever
 from src.retrievers.in_memory_dense_retriever import InMemoryDenseRetriever
 from src.retrievers.sparse_retriever import BM25SparseRetriever
+from src.utils.llm import SimpleLLM
 
 
 class HybridRetriever(BaseRetriever):
@@ -222,6 +223,29 @@ class HybridRetriever(BaseRetriever):
         """Adjust the weight for hybrid search (0=all sparse, 1=all dense)."""
         self.hybrid_alpha = alpha
         print(f"✓ Set hybrid alpha to {alpha}")
+
+    def generate(
+        self,
+        query: str,
+        results: list[tuple[dict, float]],
+        llm_model: str = "gpt-4o-mini",
+        temperature: float = 0.7,
+    ) -> dict[str, Any]:
+        """
+        Generate answer based on query (full RAG).
+
+        Args:
+            query: User query
+            k: Number of chunks to retrieve
+            llm_model: LLM model name
+
+        Returns:
+            Dict with 'answer', 'query', 'sources'
+        """
+        llm = SimpleLLM(model=llm_model)
+        response = llm.generate_llm_answer(query, results, temperature)
+
+        return response
 
     def save(self, path: str) -> None:
         """Save retriever state."""

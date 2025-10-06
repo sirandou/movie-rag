@@ -1,10 +1,11 @@
 from rank_bm25 import BM25Okapi
 import pickle
-from typing import List, Tuple
+from typing import List, Tuple, Any
 from pathlib import Path
 import string
 
 from src.retrievers.base import BaseRetriever
+from src.utils.llm import SimpleLLM
 
 
 class BM25SparseRetriever(BaseRetriever):
@@ -90,6 +91,29 @@ class BM25SparseRetriever(BaseRetriever):
             results.append((doc, score))
 
         return results
+
+    def generate(
+        self,
+        query: str,
+        results: list[tuple[dict, float]],
+        llm_model: str = "gpt-4o-mini",
+        temperature: float = 0.7,
+    ) -> dict[str, Any]:
+        """
+        Generate answer based on query (full RAG).
+
+        Args:
+            query: User query
+            k: Number of chunks to retrieve
+            llm_model: LLM model name
+
+        Returns:
+            Dict with 'answer', 'query', 'sources'
+        """
+        llm = SimpleLLM(model=llm_model)
+        response = llm.generate_llm_answer(query, results, temperature)
+
+        return response
 
     def save(self, path: str) -> None:
         """Save BM25 index to disk."""

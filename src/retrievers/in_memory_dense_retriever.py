@@ -1,10 +1,11 @@
-from typing import Literal, List, Tuple
+from typing import Literal, List, Tuple, Any
 
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
 from src.retrievers.base import BaseRetriever
 from src.utils.embeddings import EmbeddingModel
+from src.utils.llm import SimpleLLM
 
 
 class InMemoryDenseRetriever(BaseRetriever):
@@ -70,6 +71,29 @@ class InMemoryDenseRetriever(BaseRetriever):
             results.append((self.chunks[idx], float(similarities[idx])))
 
         return results
+
+    def generate(
+        self,
+        query: str,
+        results: list[tuple[dict, float]],
+        llm_model: str = "gpt-4o-mini",
+        temperature: float = 0.7,
+    ) -> dict[str, Any]:
+        """
+        Generate answer based on query (full RAG).
+
+        Args:
+            query: User query
+            k: Number of chunks to retrieve
+            llm_model: LLM model name
+
+        Returns:
+            Dict with 'answer', 'query', 'sources'
+        """
+        llm = SimpleLLM(model=llm_model)
+        response = llm.generate_llm_answer(query, results, temperature)
+
+        return response
 
     def save(self, path: str) -> None:
         pass

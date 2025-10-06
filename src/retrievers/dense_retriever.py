@@ -1,10 +1,11 @@
 import faiss
 import pickle
-from typing import List, Tuple, Literal
+from typing import List, Tuple, Literal, Any
 from pathlib import Path
 
 from src.retrievers.base import BaseRetriever
 from src.utils.embeddings import EmbeddingModel
+from src.utils.llm import SimpleLLM
 
 
 class FaissDenseRetriever(BaseRetriever):
@@ -99,6 +100,29 @@ class FaissDenseRetriever(BaseRetriever):
             results.append((doc, score))
 
         return results
+
+    def generate(
+        self,
+        query: str,
+        results: list[tuple[dict, float]],
+        llm_model: str = "gpt-4o-mini",
+        temperature: float = 0.7,
+    ) -> dict[str, Any]:
+        """
+        Generate answer based on query (full RAG).
+
+        Args:
+            query: User query
+            k: Number of chunks to retrieve
+            llm_model: LLM model name
+
+        Returns:
+            Dict with 'answer', 'query', 'sources'
+        """
+        llm = SimpleLLM(model=llm_model)
+        response = llm.generate_llm_answer(query, results, temperature)
+
+        return response
 
     def save(self, path: str) -> None:
         """Save index and documents to disk."""
