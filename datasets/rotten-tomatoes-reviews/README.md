@@ -5,8 +5,15 @@ Download dataset from [Kaggle](https://www.kaggle.com/datasets/stefanoleone992/r
 
 # prep
 Dataset in the prep folder is created by scripts [notebooks/data_prep/prep_rotten_tomatoes_data.ipynb](../../notebooks/data_prep/prep_rotten_tomatoes_data.ipynb), 
-[notebooks/data_prep/create_omdb_plots_data.ipynb](../../notebooks/data_prep/create_omdb_plots_data.ipynb) 
+[notebooks/data_prep/create_omdb_plots_data.ipynb](../../notebooks/data_prep/create_omdb_plots_data.ipynb), 
+[notebooks/data_prep/create_omdb_posters_data.ipynb](../../notebooks/data_prep/create_omdb_posters_data.ipynb)
 in order.
 
-It cleans the raw data, and joins the reviews with the movie meta-data, creates plots data from Omdb, and adds all movie metdata 
-to both files. Final data is one file with reviews and one file with movie plots.
+The final processed data files are:
+- `reviews_w_movies_full.csv`: Contains reviews along with movie metadata from both rotten tomatoes 
+(origin Kaggle dataset) and Imdb (retrieved from OMDB). Each row is a review. There are reviews for 
+8075 unique movies.
+- `movie_plots.csv`: Contains movie plots (retrieved from OMDB) along with the same metadata columns as above. 
+Each row is a movie plot. There are plots for 6257 unique movies, a subset of the movies with reviews.
+- `movie_posters.csv`: Contains movie poster paths (retrieved from OMDB) along with the same metadata columns as above. 
+Each row is a movie poster path. There are poster paths for 6431 unique movies, a subset of the movies with reviews.

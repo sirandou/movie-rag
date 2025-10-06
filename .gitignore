@@ -220,6 +220,9 @@ datasets/*/raw/*
 !datasets/*/raw/.gitkeep
 datasets/*/prep/*
 !datasets/*/prep/.gitkeep
+!datasets/*/prep/posters
+datasets/*/prep/posters/*
+!datasets/*/prep/posters/.gitkeep
 
 # Notebooks output
 *.ipynb_checkpoints/

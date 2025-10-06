@@ -104,6 +104,43 @@ def create_review_docs(
     return review_docs
 
 
+def create_poster_docs(
+    posters_df: pd.DataFrame,
+    text_metadata_columns: List[str],
+    obj_metadata_columns: List[str],
+) -> List[dict]:
+    """Converts a plots DataFrame into dictionary documents with chosen metadata.
+
+    Args:
+        posters_df: DataFrame containing movie poster path and metadata
+        text_metadata_columns: Columns to prepend to the text content
+        obj_metadata_columns: Columns to include in the metadata dict
+
+    Returns:
+        List of dictionaries with 'poster_path', 'text_content', and 'metadata' keys
+    """
+    # remove rows with nan poster paths
+    posters_df = posters_df.dropna(subset=["poster_path"])
+
+    poster_docs = []
+
+    for _, row in posters_df.iterrows():
+        text_content = ""
+        for col in text_metadata_columns:
+            if col in row and pd.notna(row[col]):
+                text_content += f"{col.replace('_', ' ').capitalize()}: {row[col]}\n"
+        # Create Document
+        temp_doc = {"poster_path": row["poster_path"], "text_content": text_content, "metadata": {"source": "poster"}}
+        for col in obj_metadata_columns:
+            if col in row and pd.notna(row[col]):
+                temp_doc["metadata"][col] = row[col]
+
+        poster_docs.append(temp_doc)
+
+    print(f"Created {len(poster_docs)} poster docs.")
+    return poster_docs
+
+
 if __name__ == "__main__":
     from pathlib import Path
     import argparse
