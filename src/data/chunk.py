@@ -148,10 +148,14 @@ class MovieReviewChunker:
 
 
 def chunk(
-    chunking_strategy: str, all_docs: list[dict], cfg: dict[str, Any] = {}
+    chunking_strategy: str, all_docs: list[dict], cfg: dict[str, Any] | None = None
 ) -> list[dict]:
-    """Get list of documents and return list of chunks with added chunk metadata"""
+    """Get list of documents and return list of chunks with added chunk metadata.
+    This serves like a basic factory function for different chunking strategies."""
     # Options: "fixed", "sentence", "semantic"
+    if cfg is None:
+        cfg = {}
+
     print("\nChunking documents...")
 
     chunker = MovieReviewChunker()

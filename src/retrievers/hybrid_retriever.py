@@ -2,14 +2,14 @@ from typing import List, Tuple, Literal, Any
 from pathlib import Path
 import pickle
 
-from src.retrievers.base import BaseRetriever
+from src.retrievers.base import CustomBaseRetriever
 from src.retrievers.dense_retriever import FaissDenseRetriever
 from src.retrievers.in_memory_dense_retriever import InMemoryDenseRetriever
 from src.retrievers.sparse_retriever import BM25SparseRetriever
 from src.utils.llm import SimpleLLM
 
 
-class HybridRetriever(BaseRetriever):
+class HybridRetriever(CustomBaseRetriever):
     """
     Hybrid retriever that mixes dense and sparse retrieval.
     It can also switch between dense, sparse, and hybrid strategies at any point.
@@ -86,9 +86,7 @@ class HybridRetriever(BaseRetriever):
 
         print(f"✓ Added {len(documents)} documents to HybridRetriever")
 
-    def search(
-        self, query: str, k: int = 5, use_rrf: bool = False
-    ) -> List[Tuple[dict, float]]:
+    def search(self, query: str, k: int = 5) -> List[Tuple[dict, float]]:
         """
         Search using the configured strategy.
 
@@ -104,8 +102,6 @@ class HybridRetriever(BaseRetriever):
         elif self.strategy == "sparse":
             return self._search_sparse(query, k)
         elif self.strategy == "hybrid":
-            if use_rrf:
-                return self._search_hybrid_rrf(query, k)
             return self._search_hybrid(query, k)
         else:
             raise ValueError(f"Unknown strategy: {self.strategy}")
@@ -236,8 +232,9 @@ class HybridRetriever(BaseRetriever):
 
         Args:
             query: User query
-            k: Number of chunks to retrieve
+            results: List of (document, score) tuples
             llm_model: LLM model name
+            temperature: Sampling temperature for LLM
 
         Returns:
             Dict with 'answer', 'query', 'sources'

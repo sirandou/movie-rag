@@ -5,11 +5,11 @@ import faiss
 import numpy as np
 from path import Path
 
-from src.retrievers.base import BaseRetriever
+from src.retrievers.base import CustomBaseRetriever
 from src.utils.clip_embeddings import CLIPEmbedding
 
 
-class VisualRetriever(BaseRetriever):
+class VisualRetriever(CustomBaseRetriever):
     def __init__(
         self,
         model_name: str = "ViT-B/32",
@@ -114,7 +114,7 @@ class VisualRetriever(BaseRetriever):
         # Results
         results = []
         for idx, dist in zip(indices[0], distances[0]):
-            results.append((self.documents[idx], float(dist)))
+            results.append((self.documents[idx], -float(dist)))  # score = -distance
 
         return results
 

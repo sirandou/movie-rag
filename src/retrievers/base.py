@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple
 
 
-class BaseRetriever(ABC):
+class CustomBaseRetriever(ABC):
     """Abstract base class for all retrievers."""
 
     @abstractmethod
@@ -11,14 +11,13 @@ class BaseRetriever(ABC):
         pass
 
     @abstractmethod
-    def search(self, query: str, k: int = 5, **kwargs) -> List[Tuple[dict, float]]:
+    def search(self, query: str, k: int = 5) -> List[Tuple[dict, float]]:
         """
         Search for relevant documents.
 
         Args:
             query: Search query
             k: Number of results to return
-            **kwargs: Additional retriever-specific parameters
 
         Returns:
             List of (document/chunk, score) tuples

@@ -3,12 +3,12 @@ from typing import Literal, List, Tuple, Any
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from src.retrievers.base import BaseRetriever
+from src.retrievers.base import CustomBaseRetriever
 from src.utils.embeddings import EmbeddingModel
 from src.utils.llm import SimpleLLM
 
 
-class InMemoryDenseRetriever(BaseRetriever):
+class InMemoryDenseRetriever(CustomBaseRetriever):
     """Simple in-memory vector store using cosine similarity."""
 
     def __init__(
@@ -84,8 +84,9 @@ class InMemoryDenseRetriever(BaseRetriever):
 
         Args:
             query: User query
-            k: Number of chunks to retrieve
+            results: List of (document, score) tuples
             llm_model: LLM model name
+            temperature: Sampling temperature for LLM
 
         Returns:
             Dict with 'answer', 'query', 'sources'

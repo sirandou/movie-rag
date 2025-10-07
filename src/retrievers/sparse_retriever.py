@@ -4,11 +4,11 @@ from typing import List, Tuple, Any
 from pathlib import Path
 import string
 
-from src.retrievers.base import BaseRetriever
+from src.retrievers.base import CustomBaseRetriever
 from src.utils.llm import SimpleLLM
 
 
-class BM25SparseRetriever(BaseRetriever):
+class BM25SparseRetriever(CustomBaseRetriever):
     """BM25-based sparse retriever for keyword search."""
 
     def __init__(self, k1: float = 1.5, b: float = 0.75):
@@ -104,8 +104,9 @@ class BM25SparseRetriever(BaseRetriever):
 
         Args:
             query: User query
-            k: Number of chunks to retrieve
+            results: List of (document, score) tuples
             llm_model: LLM model name
+            temperature: Sampling temperature for LLM
 
         Returns:
             Dict with 'answer', 'query', 'sources'

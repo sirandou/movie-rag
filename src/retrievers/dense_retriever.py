@@ -3,12 +3,12 @@ import pickle
 from typing import List, Tuple, Literal, Any
 from pathlib import Path
 
-from src.retrievers.base import BaseRetriever
+from src.retrievers.base import CustomBaseRetriever
 from src.utils.embeddings import EmbeddingModel
 from src.utils.llm import SimpleLLM
 
 
-class FaissDenseRetriever(BaseRetriever):
+class FaissDenseRetriever(CustomBaseRetriever):
     """FAISS-based dense retriever using embeddings."""
 
     def __init__(
@@ -113,8 +113,9 @@ class FaissDenseRetriever(BaseRetriever):
 
         Args:
             query: User query
-            k: Number of chunks to retrieve
+            results: List of (document, score) tuples
             llm_model: LLM model name
+            temperature: Sampling temperature for LLM
 
         Returns:
             Dict with 'answer', 'query', 'sources'
