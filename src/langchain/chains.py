@@ -8,6 +8,7 @@ from langchain.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 
 from src.langchain.chunk import chunk_documents
+from src.langchain.reranker import create_reranking_retriever
 from src.retrievers.factory import create_text_retriever
 from src.langchain.loaders import MovieTextDocumentLoader
 from src.langchain.retrievers import TextRetrieverWrapper
@@ -22,6 +23,7 @@ class MovieRAGChain:
     - Supports custom chunking or LangChain chunking.
     - Uses RetrievalQA with "stuff" chain type.
     - Can use custom prompt templates.
+    - Supports reranking retrievers via custom retrievers or langchain retrievers.
     """
 
     def __init__(
@@ -34,13 +36,16 @@ class MovieRAGChain:
         retriever_config: dict = {"type": "dense"},
         chunk_size: int = 800,
         chunk_overlap: int = 150,
-        custom_chunk: bool = True,
+        use_custom_chunk: bool = True,
         chunk_config: dict | None = None,
         embed_model: str = "text-embedding-3-small",
         llm_model: str = "gpt-4o-mini",
         llm_temperature: float = 0.0,
         k: int = 5,
-        custom_prompt: BasePromptTemplate | None = None,
+        custom_prompt: BasePromptTemplate = None,
+        use_reranking: bool = False,
+        reranker_cfg: dict = {"type": "cross-encoder"},
+        initial_k: int = 20,
     ):
         """
         Initialize simple RAG chain.
@@ -54,13 +59,16 @@ class MovieRAGChain:
             retriever_config (dict): Configuration for the custom retriever (if custom_retriever is None).
             chunk_size (int): Chunk size for the text splitter.
             chunk_overlap (int): Overlap size between text chunks.
-            custom_chunk (bool): If True, use custom chunking logic.
+            use_custom_chunk (bool): If True, use custom chunking logic.
             chunk_config (dict | None): Additional configuration for chunking.
             embed_model (str): Embedding model name.
             llm_model (str): LLM model name (OpenAI).
             llm_temperature (float): Temperature for the LLM.
             k (int): Number of results to retrieve.
             custom_prompt (BasePromptTemplate | None): Custom prompt template for the QA chain.
+            use_reranking (bool): If True, use a reranking retriever.
+            reranker_cfg (dict): Configuration for the reranking retriever.
+            initial_k (int): Initial number of documents to retrieve before reranking.
         """
         self.plots_path = plots_path
         self.reviews_path = reviews_path
@@ -70,7 +78,7 @@ class MovieRAGChain:
         self.retriever_config = retriever_config
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.custom_chunk = custom_chunk
+        self.custom_chunk = use_custom_chunk
         self.chunk_config = chunk_config
 
         self.loader = None
@@ -83,9 +91,14 @@ class MovieRAGChain:
         self.k = k
         self.custom_prompt = custom_prompt
 
+        self.use_reranking = use_reranking
+        self.reranker_cfg = reranker_cfg
+        self.initial_k = initial_k
+
         retriever_type = "custom" if use_custom_retriever else "langchain"
+        rerank_status = " + reranking" if use_reranking else ""
         print("✓ MovieRAGChain initialized")
-        print(f"  Retriever type: {retriever_type}")
+        print(f"  Retriever type: {retriever_type}{rerank_status}")
         print(f"  LLM: {llm_model}")
 
     def build(self):
@@ -122,28 +135,27 @@ class MovieRAGChain:
             print(f"  Created {len(chunks)} chunks from {len(documents)} documents")
 
         # 3. Build retriever (LangChain or Custom)
+        retriever_k = self.initial_k if self.use_reranking else self.k
         if self.use_custom_retriever:
-            self._build_custom_retriever(chunks)
+            self._build_custom_retriever(chunks, k=retriever_k)
         else:
-            self._build_langchain_retriever(chunks)
+            self._build_langchain_retriever(chunks, k=retriever_k)
+        if self.use_reranking:
+            self._build_reranker(self.k)
 
         # 4. Create QA chain
         print("\n4. Creating QA chain...")
-        if self.custom_prompt is None:
-            self.qa_chain = RetrievalQA.from_chain_type(
-                llm=self.llm,
-                retriever=self.retriever,
-                return_source_documents=True,
-                chain_type="stuff",
-            )
-        else:
-            self.qa_chain = RetrievalQA.from_chain_type(
-                llm=self.llm,
-                retriever=self.retriever,
-                return_source_documents=True,
-                chain_type="stuff",
-                chain_type_kwargs={"prompt": self.custom_prompt},
-            )
+        chain_type_kwargs = {}
+        if self.custom_prompt is not None:
+            chain_type_kwargs["prompt"] = self.custom_prompt
+
+        self.qa_chain = RetrievalQA.from_chain_type(
+            llm=self.llm,
+            retriever=self.retriever,
+            return_source_documents=True,
+            chain_type="stuff",
+            chain_type_kwargs=chain_type_kwargs,
+        )
 
         print("\n" + "=" * 60)
         print("✓ RAG Pipeline Built!")
@@ -151,7 +163,7 @@ class MovieRAGChain:
 
         return self
 
-    def _build_langchain_retriever(self, chunks: List[Document]):
+    def _build_langchain_retriever(self, chunks: List[Document], k: int) -> None:
         """Build LangChain's built-in FAISS retriever."""
         print("\n3. Building LangChain FAISS retriever...")
 
@@ -159,9 +171,9 @@ class MovieRAGChain:
             chunks, OpenAIEmbeddings(model=self.embed_model, chunk_size=1000)
         )
 
-        self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": self.k})
+        self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": k})
 
-    def _build_custom_retriever(self, chunks: List[Document]):
+    def _build_custom_retriever(self, chunks: List[Document], k: int) -> None:
         """Build custom retriever wrapped for LangChain."""
         print("\n3. Building custom retriever...")
 
@@ -169,12 +181,19 @@ class MovieRAGChain:
             self.custom_retriever = create_text_retriever(self.retriever_config)
 
         # Wrap retriever for LangChain (adds scores to metadata automatically)
-        self.retriever = TextRetrieverWrapper(self.custom_retriever, k=self.k)
+        self.retriever = TextRetrieverWrapper(self.custom_retriever, k=k)
 
         # Add LangChain chunks (wrapper handles conversion!)
         self.retriever.add_documents(chunks)
 
-    def query(self, question: str, return_sources: bool = True):
+    def _build_reranker(self, k: int) -> None:
+        self.base_retriever = self.retriever
+        self.retriever = create_reranking_retriever(
+            self.base_retriever, top_k=k, cfg=self.reranker_cfg
+        )
+        print(f"  ✓ Reranking enabled: {self.initial_k} → {k} docs")
+
+    def query(self, question: str, return_sources: bool = True) -> dict:
         """
         Query the RAG system.
 
@@ -203,7 +222,7 @@ class MovieRAGChain:
 
         return response
 
-    def save(self, path: str):
+    def save(self, path: str) -> None:
         """Save retriever state."""
         from pathlib import Path
 

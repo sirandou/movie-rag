@@ -5,8 +5,8 @@ from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 
 # Zero-shot
 ZERO_SHOT_QA_PROMPT = PromptTemplate(
-    input_variables=["context", "query"],
-    template="""You are a movie expert. Use the context to answer the question.
+    input_variables=["context", "question"],
+    template="""You are a helpful movie assistant. Answer the user's question based on the provided movie information.
 
 Instructions:
 - Answer based ONLY on the provided information
@@ -14,9 +14,9 @@ Instructions:
 - If information is insufficient, say so
 - Be concise but informative
 
-Context: {context}
+Retrieved Information:: {context}
 
-Question: {query}
+User question: {question}
 
 Answer:""",
 )
@@ -24,17 +24,18 @@ Answer:""",
 # Few-shot examples
 EXAMPLES = [
     {
-        "query": "I want a mind-bending sci-fi movie",
+        "question": "I want a mind-bending sci-fi movie",
         "answer": "I recommend:\n1. Inception (2010) - Dream heists with nested realities\n2. The Matrix (1999) - Simulated reality with action\n3. Primer (2004) - Complex time travel",
     },
     {
-        "query": "Movies like Shawshank Redemption",
+        "question": "Movies like Shawshank Redemption",
         "answer": "I recommend:\n1. The Green Mile (1999) - Prison drama with redemption themes\n2. The Pursuit of Happyness (2006) - Inspiring perseverance\n3. Good Will Hunting (1997) - Personal growth and potential",
     },
 ]
 
 EXAMPLE_TEMPLATE = PromptTemplate(
-    input_variables=["query", "answer"], template="User: {query}\nAssistant: {answer}"
+    input_variables=["question", "answer"],
+    template="User: {question}\nAssistant: {answer}",
 )
 
 FEW_SHOT_QA_PROMPT = FewShotPromptTemplate(
@@ -53,7 +54,7 @@ Examples:""",
     Context:
     {context}
 
-    User: {query}
+    User: {question}
     Assistant:""",
-    input_variables=["query", "context"],
+    input_variables=["question", "context"],
 )  # just randomly trying user assistant instead of question answer

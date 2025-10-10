@@ -139,7 +139,7 @@ class MovieTextDocumentLoader(BaseLoader):
 
         df["release_year"] = pd.to_datetime(df["original_release_date"]).dt.year
         df = df.drop_duplicates()
-        df = df.sample(n=self.max_movies).reset_index(drop=True)
+        df = df.sample(n=self.max_movies, random_state=42).reset_index(drop=True)
         return df
 
     def _load_plots(
