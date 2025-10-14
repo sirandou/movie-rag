@@ -3,6 +3,7 @@ from typing import List
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.retrievers import BaseRetriever
 from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
@@ -10,18 +11,11 @@ from langchain.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 
 from src.langchain.chunk import chunk_documents
-from src.langchain.reranker import create_reranking_retriever
+from src.langchain.retrieval.hyde import HyDERetriever
 from src.retrievers.factory import create_text_retriever
 from src.langchain.loaders import MovieTextDocumentLoader
-from src.langchain.retrievers import TextRetrieverWrapper
+from src.langchain.retrieval.retrievers import TextRetrieverWrapper
 from langchain.prompts.base import BasePromptTemplate
-import logging
-
-logger = logging.getLogger(__name__)
-
-RetrieverType = (
-    TextRetrieverWrapper | VectorStoreRetriever | ContextualCompressionRetriever
-)
 
 
 class MovieRAGChain:
@@ -58,6 +52,10 @@ class MovieRAGChain:
         use_reranking: bool = False,
         reranker_cfg: dict = {"type": "cross-encoder"},
         initial_k: int = 20,
+        # HyDE
+        use_hyde: bool = False,
+        hyde_model: str = "gpt-4o-mini",
+        hyde_prompt: BasePromptTemplate = None,
     ):
         """
         Initialize simple RAG chain.
@@ -77,10 +75,13 @@ class MovieRAGChain:
             llm_model (str): LLM model name (OpenAI).
             llm_temperature (float): Temperature for the LLM.
             k (int): Number of results to retrieve.
-            custom_prompt (BasePromptTemplate | None): Custom prompt template for the QA chain.
+            custom_prompt (BasePromptTemplate): Custom prompt template for the QA chain, default None.
             use_reranking (bool): If True, use a reranking retriever.
             reranker_cfg (dict): Configuration for the reranking retriever.
             initial_k (int): Initial number of documents to retrieve before reranking.
+            use_hyde (bool): If True, use HyDE.
+            hyde_model (str): Model to use for HyDE.
+            hyde_prompt (BasePromptTemplate): Custom prompt template for HyDE, default None.
         """
         self.plots_path = plots_path
         self.reviews_path = reviews_path
@@ -106,11 +107,14 @@ class MovieRAGChain:
         self.use_reranking = use_reranking
         self.reranker_cfg = reranker_cfg
         self.initial_k = initial_k
+        self.use_hyde = use_hyde
+        self.hyde_model = hyde_model
+        self.hyde_prompt = hyde_prompt
 
-        retriever_type = "custom" if use_custom_retriever else "langchain"
-        rerank_status = " + reranking" if use_reranking else ""
         print("✓ MovieRAGChain initialized")
-        print(f"  Retriever type: {retriever_type}{rerank_status}")
+        print(
+            f"  Retriever type: {'custom' if use_custom_retriever else 'langchain'}{' + reranking' if use_reranking else ''}{' + HyDE' if use_hyde else ''}"
+        )
         print(f"  LLM: {llm_model}")
 
     def build(self):
@@ -184,7 +188,7 @@ class MovieRAGChain:
             print(f"Created {len(chunks)} chunks from {len(documents)} documents")
         return chunks
 
-    def _build_base_retriever(self, chunks: List[Document]) -> RetrieverType:
+    def _build_base_retriever(self, chunks: List[Document]) -> BaseRetriever:
         """
         Build the base retriever for the RAG pipeline, either custom or LangChain.
 
@@ -254,7 +258,7 @@ class MovieRAGChain:
 
     # ==================== FEATURE IMPLEMENTATIONS ====================
 
-    def _apply_retrieval_features(self, base_retriever: RetrieverType) -> RetrieverType:
+    def _apply_retrieval_features(self, base_retriever: BaseRetriever) -> BaseRetriever:
         """
         Apply retrieval features in order:
         1. Reranking (if enabled)
@@ -262,18 +266,33 @@ class MovieRAGChain:
         retriever = base_retriever
         step = 4
 
-        # Feature: Reranking (applied last - post-processes results)
+        # Feature 1: HyDE (query transformation - applied first)
+        if self.use_hyde:
+            print(f"\n{step}. Adding HyDE query transformation...")
+            retriever = self._add_hyde(retriever)
+            step += 1
+
+        # Feature 2: Reranking (applied last - post-processes results)
         if self.use_reranking:
-            print(f"\n{step}. Adding reranking...")
+            print(f"\n{step}. Adding reranking: {self.initial_k} → {self.k} docs...")
             retriever = self._add_reranking(retriever, self.k)
-            print(f"  ✓ Reranking enabled: {self.initial_k} → {self.k} docs")
             step += 1
 
         return retriever
 
+    def _add_hyde(self, base_retriever: BaseRetriever) -> BaseRetriever:
+        """Add HyDE query transformation."""
+        return HyDERetriever(
+            base_retriever=base_retriever,
+            llm_model=self.hyde_model,
+            hyde_prompt=self.hyde_prompt,
+        )
+
     def _add_reranking(
-        self, base_retriever: RetrieverType, k: int
+        self, base_retriever: BaseRetriever, k: int
     ) -> ContextualCompressionRetriever:
+        from src.langchain.retrieval.reranker import create_reranking_retriever
+
         """Build and set up the reranking retriever for the RAG pipeline."""
         return create_reranking_retriever(
             base_retriever, top_k=k, cfg=self.reranker_cfg
