@@ -1,7 +1,9 @@
 from typing import List
 
+from langchain.retrievers import ContextualCompressionRetriever
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain.vectorstores import FAISS
@@ -13,6 +15,13 @@ from src.retrievers.factory import create_text_retriever
 from src.langchain.loaders import MovieTextDocumentLoader
 from src.langchain.retrievers import TextRetrieverWrapper
 from langchain.prompts.base import BasePromptTemplate
+import logging
+
+logger = logging.getLogger(__name__)
+
+RetrieverType = (
+    TextRetrieverWrapper | VectorStoreRetriever | ContextualCompressionRetriever
+)
 
 
 class MovieRAGChain:
@@ -28,9 +37,11 @@ class MovieRAGChain:
 
     def __init__(
         self,
+        # Data
         plots_path: str,
         reviews_path: str = None,
         max_movies: int = None,
+        # Base Retriever
         use_custom_retriever: bool = True,
         custom_retriever=None,
         retriever_config: dict = {"type": "dense"},
@@ -43,6 +54,7 @@ class MovieRAGChain:
         llm_temperature: float = 0.0,
         k: int = 5,
         custom_prompt: BasePromptTemplate = None,
+        # Reranking
         use_reranking: bool = False,
         reranker_cfg: dict = {"type": "cross-encoder"},
         initial_k: int = 20,
@@ -108,23 +120,60 @@ class MovieRAGChain:
         print("=" * 60)
 
         # 1. Load documents using document creators
+        documents = self._load_documents()
+
+        # 2. Chunk documents (custom or LangChain)
+        chunks = self._chunk_documents(documents)
+
+        # 3. Build retriever (LangChain or Custom) and reranker if needed
+        self.base_retriever = self._build_base_retriever(chunks)
+
+        # Step 4: Apply features in order
+        self.retriever = self._apply_retrieval_features(self.base_retriever)
+
+        # 5. Create QA chain
+        self._create_qa_chain()
+
+        print("\n" + "=" * 60)
+        print("✓ RAG Pipeline Built!")
+        print("=" * 60)
+
+        return self
+
+    # ==================== INTERNAL METHODS ====================
+
+    def _load_documents(self) -> list[Document]:
+        """
+        Load documents using the MovieTextDocumentLoader.
+
+        Returns:
+            list[Document]: Loaded documents.
+        """
         print("\n1. Loading documents...")
         self.loader = MovieTextDocumentLoader(
             plots_path=self.plots_path,
             reviews_path=self.reviews_path,
             max_movies=self.max_movies,
         )
-        documents = self.loader.load()
+        return self.loader.load()
 
+    def _chunk_documents(self, documents: list[Document]) -> list[Document]:
+        """
+        Chunk documents using either custom or LangChain chunking.
+
+        Args:
+            documents (list[Document]): Documents to chunk.
+
+        Returns:
+            list[Document]: Chunked documents.
+        """
         if self.custom_chunk:
-            # 2. Custom chunk
             print("\n2. Chunking with custom func...")
             chunks = chunk_documents(
                 documents,
                 chunking_strategy="sentence",
             )
         else:
-            # 2. Chunk with LangChain
             print("\n2. Chunking with LangChain...")
             self.text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=self.chunk_size,
@@ -132,20 +181,66 @@ class MovieRAGChain:
                 separators=["\n\n", "\n", ". ", " ", ""],
             )
             chunks = self.text_splitter.split_documents(documents)
-            print(f"  Created {len(chunks)} chunks from {len(documents)} documents")
+            print(f"Created {len(chunks)} chunks from {len(documents)} documents")
+        return chunks
 
-        # 3. Build retriever (LangChain or Custom)
+    def _build_base_retriever(self, chunks: List[Document]) -> RetrieverType:
+        """
+        Build the base retriever for the RAG pipeline, either custom or LangChain.
+
+        Args:
+            chunks (List[Document]): The list of document chunks to index.
+
+        Returns:
+            None
+        """
+        print("\nBuilding base retriever...")
         retriever_k = self.initial_k if self.use_reranking else self.k
         if self.use_custom_retriever:
-            self._build_custom_retriever(chunks, k=retriever_k)
+            return self._build_custom_retriever(chunks, k=retriever_k)
         else:
-            self._build_langchain_retriever(chunks, k=retriever_k)
-        if self.use_reranking:
-            self._build_reranker(self.k)
+            return self._build_langchain_retriever(chunks, k=retriever_k)
 
-        # 4. Create QA chain
-        print("\n4. Creating QA chain...")
-        chain_type_kwargs = {}
+    def _build_langchain_retriever(
+        self, chunks: List[Document], k: int
+    ) -> VectorStoreRetriever:
+        """Build LangChain's built-in FAISS retriever."""
+        print("\n3. Building LangChain FAISS retriever...")
+
+        self.vectorstore = FAISS.from_documents(
+            chunks, OpenAIEmbeddings(model=self.embed_model, chunk_size=1000)
+        )
+
+        return self.vectorstore.as_retriever(search_kwargs={"k": k})
+
+    def _build_custom_retriever(
+        self, chunks: List[Document], k: int
+    ) -> TextRetrieverWrapper:
+        """Build custom retriever wrapped for LangChain."""
+        print("\n3. Building custom retriever...")
+
+        if self.custom_retriever is None:
+            self.custom_retriever = create_text_retriever(self.retriever_config)
+
+        # Wrap retriever for LangChain (adds scores to metadata automatically)
+        retriever = TextRetrieverWrapper(self.custom_retriever, k=k)
+
+        # Add LangChain chunks (wrapper handles conversion!)
+        retriever.add_documents(chunks)
+        return retriever
+
+    def _create_qa_chain(self) -> None:
+        """
+        Create the RetrievalQA chain with the configured LLM, retriever, and prompt.
+
+        Raises:
+            ValueError: If LLM or retriever is not set.
+        """
+        if self.llm is None or self.retriever is None:
+            raise ValueError("LLM and retriever must be set before creating QA chain.")
+
+        print("\n5. Creating QA chain...")
+        chain_type_kwargs: dict = {}
         if self.custom_prompt is not None:
             chain_type_kwargs["prompt"] = self.custom_prompt
 
@@ -157,41 +252,34 @@ class MovieRAGChain:
             chain_type_kwargs=chain_type_kwargs,
         )
 
-        print("\n" + "=" * 60)
-        print("✓ RAG Pipeline Built!")
-        print("=" * 60)
+    # ==================== FEATURE IMPLEMENTATIONS ====================
 
-        return self
+    def _apply_retrieval_features(self, base_retriever: RetrieverType) -> RetrieverType:
+        """
+        Apply retrieval features in order:
+        1. Reranking (if enabled)
+        """
+        retriever = base_retriever
+        step = 4
 
-    def _build_langchain_retriever(self, chunks: List[Document], k: int) -> None:
-        """Build LangChain's built-in FAISS retriever."""
-        print("\n3. Building LangChain FAISS retriever...")
+        # Feature: Reranking (applied last - post-processes results)
+        if self.use_reranking:
+            print(f"\n{step}. Adding reranking...")
+            retriever = self._add_reranking(retriever, self.k)
+            print(f"  ✓ Reranking enabled: {self.initial_k} → {self.k} docs")
+            step += 1
 
-        self.vectorstore = FAISS.from_documents(
-            chunks, OpenAIEmbeddings(model=self.embed_model, chunk_size=1000)
+        return retriever
+
+    def _add_reranking(
+        self, base_retriever: RetrieverType, k: int
+    ) -> ContextualCompressionRetriever:
+        """Build and set up the reranking retriever for the RAG pipeline."""
+        return create_reranking_retriever(
+            base_retriever, top_k=k, cfg=self.reranker_cfg
         )
 
-        self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": k})
-
-    def _build_custom_retriever(self, chunks: List[Document], k: int) -> None:
-        """Build custom retriever wrapped for LangChain."""
-        print("\n3. Building custom retriever...")
-
-        if self.custom_retriever is None:
-            self.custom_retriever = create_text_retriever(self.retriever_config)
-
-        # Wrap retriever for LangChain (adds scores to metadata automatically)
-        self.retriever = TextRetrieverWrapper(self.custom_retriever, k=k)
-
-        # Add LangChain chunks (wrapper handles conversion!)
-        self.retriever.add_documents(chunks)
-
-    def _build_reranker(self, k: int) -> None:
-        self.base_retriever = self.retriever
-        self.retriever = create_reranking_retriever(
-            self.base_retriever, top_k=k, cfg=self.reranker_cfg
-        )
-        print(f"  ✓ Reranking enabled: {self.initial_k} → {k} docs")
+    # ==================== PUBLIC API ====================
 
     def query(self, question: str, return_sources: bool = True) -> dict:
         """
