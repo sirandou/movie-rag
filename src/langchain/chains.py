@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Any
 
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.schema import Document
@@ -300,7 +300,7 @@ class MovieRAGChain:
 
     # ==================== PUBLIC API ====================
 
-    def query(self, question: str, return_sources: bool = True) -> dict:
+    def query(self, question: str, return_sources: bool = True) -> dict[str, Any]:
         """
         Query the RAG system.
 

@@ -4,6 +4,8 @@ from langchain_openai import ChatOpenAI
 from langchain.callbacks.manager import CallbackManagerForRetrieverRun
 from langchain.prompts import PromptTemplate
 
+from src.langchain.prompts import HYDE_PROMPT
+
 
 class HyDERetriever(BaseRetriever):
     """
@@ -43,15 +45,7 @@ class HyDERetriever(BaseRetriever):
         """
         # Default HyDE prompt
         if hyde_prompt is None:
-            hyde_prompt = PromptTemplate(
-                input_variables=["pre_hyde_query"],
-                template="""Write a detailed paragraph that perfectly answers this question about movies.
-Write as if you're a movie expert giving the ideal response.
-
-Question: {pre_hyde_query}
-
-Expert Answer:""",
-            )
+            hyde_prompt = (HYDE_PROMPT,)
 
         llm = ChatOpenAI(model=llm_model, temperature=0.7)
 

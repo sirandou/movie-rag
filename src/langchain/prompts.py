@@ -14,7 +14,7 @@ Instructions:
 - If information is insufficient, say so
 - Be concise but informative
 
-Retrieved Information:: {context}
+Retrieved Information: {context}
 
 User question: {question}
 
@@ -58,3 +58,37 @@ Examples:""",
     Assistant:""",
     input_variables=["question", "context"],
 )  # just randomly trying user assistant instead of question answer
+
+
+# System prompt for LLM
+STREAM_PROMPT = PromptTemplate(
+    input_variables=["context", "question"],
+    template="""You are a helpful movie assistant. Answer the user's question based on the provided movie information.
+
+IMPORTANT: When referencing information from a specific source, add inline numeric citations EXACTLY like [1], [2], etc.
+
+Instructions:
+- Answer based ONLY on the provided information
+- Mention specific movies when relevant
+- If information is insufficient, say so
+- Be concise but informative
+- Each citation must correspond to one of the numbered sources below
+
+Retrieved Information (numbered sources): {context}
+
+User question: {question}
+
+Answer with inline citations::""",
+)
+
+
+# HyDE prompt for hypothetical answer generation
+HYDE_PROMPT = PromptTemplate(
+    input_variables=["pre_hyde_query"],
+    template="""Write a detailed paragraph that perfectly answers this question about movies.
+Write as if you're a movie expert giving the ideal response.
+
+Question: {pre_hyde_query}
+
+Expert Answer:""",
+)
