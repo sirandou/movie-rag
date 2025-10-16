@@ -6,8 +6,12 @@ class BaseChain(ABC):
     """
     Abstract base class for a flexible RAG chain.
     Subclasses must implement core pipeline steps.
-    Important: self.retriever must be set in build().
+    Important: self.retriever must be set in build(). self.llm must be set in __init__().
     """
+
+    def __init__(self):
+        self.llm = None
+        self.retriever = None
 
     @abstractmethod
     def build(self):

@@ -47,7 +47,7 @@ class HyDERetriever(BaseRetriever):
         """
         # Default HyDE prompt
         if hyde_prompt is None:
-            hyde_prompt = (HYDE_PROMPT,)
+            hyde_prompt = HYDE_PROMPT
 
         llm = ChatOpenAI(model=llm_model, temperature=0.7)
 
