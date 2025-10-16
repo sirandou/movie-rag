@@ -60,7 +60,7 @@ Examples:""",
 )  # just randomly trying user assistant instead of question answer
 
 
-# System prompt for LLM
+# Streaming prompt with citations
 STREAM_PROMPT = PromptTemplate(
     input_variables=["context", "question"],
     template="""You are a helpful movie assistant. Answer the user's question based on the provided movie information.

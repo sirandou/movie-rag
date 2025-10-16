@@ -16,9 +16,10 @@ from src.retrievers.factory import create_text_retriever
 from src.langchain.loaders import MovieTextDocumentLoader
 from src.langchain.retrieval.retrievers import TextRetrieverWrapper
 from langchain.prompts.base import BasePromptTemplate
+from src.langchain.chains.abstract_chain import BaseChain
 
 
-class MovieRAGChain:
+class MovieRAGChain(BaseChain):
     """
     Flexible RAG chain that can use:
     1. LangChain retrievers (default) - FAISS with OpenAI embeddings
@@ -26,7 +27,8 @@ class MovieRAGChain:
     - Supports custom chunking or LangChain chunking.
     - Uses RetrievalQA with "stuff" chain type.
     - Can use custom prompt templates.
-    - Supports reranking retrievers via custom retrievers or langchain retrievers.
+    - Supports reranking with Cross-Encoder or other methods.
+    - Supports HyDE (Hypothetical Document Embeddings).
     """
 
     def __init__(
@@ -37,7 +39,7 @@ class MovieRAGChain:
         max_movies: int = None,
         # Base Retriever
         use_custom_retriever: bool = True,
-        custom_retriever=None,
+        custom_retriever: BaseRetriever = None,
         retriever_config: dict = {"type": "dense"},
         chunk_size: int = 800,
         chunk_overlap: int = 150,
@@ -65,7 +67,7 @@ class MovieRAGChain:
             reviews_path (str, optional): Path to the reviews CSV file.
             max_movies (int, optional): Maximum number of movies to load (for testing).
             use_custom_retriever (bool): If True, use a custom retriever instead of LangChain.
-            custom_retriever (Any, optional): Pre-built custom retriever instance.
+            custom_retriever (BaseRetriever, optional): Pre-built custom retriever instance.
             retriever_config (dict): Configuration for the custom retriever (if custom_retriever is None).
             chunk_size (int): Chunk size for the text splitter.
             chunk_overlap (int): Overlap size between text chunks.
@@ -132,7 +134,7 @@ class MovieRAGChain:
         # 3. Build retriever (LangChain or Custom) and reranker if needed
         self.base_retriever = self._build_base_retriever(chunks)
 
-        # Step 4: Apply features in order
+        # Step 4: Apply features in order (wrappers around base retriever)
         self.retriever = self._apply_retrieval_features(self.base_retriever)
 
         # 5. Create QA chain

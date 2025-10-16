@@ -204,7 +204,7 @@ def create_reranking_retriever(
     cfg: dict = {},
 ) -> ContextualCompressionRetriever:
     """
-    Factory function to create reranking retriever.
+    Factory function to create reranking retriever, a wrapper around a base retriever.
 
     Args:
         base_retriever: base retriever instance

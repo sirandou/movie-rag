@@ -12,6 +12,8 @@ class HyDERetriever(BaseRetriever):
     HyDE (Hypothetical Document Embeddings): Generate hypothetical perfect answer first,
     embed it, then retrieve documents close to this hypothetical `answer` rather than the query.
 
+    A wrapper around any BaseRetriever (e.g., vector store).
+
     Flow:
     1. User query → LLM generates hypothetical perfect answer
     2. Embed hypothetical answer

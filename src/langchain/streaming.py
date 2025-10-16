@@ -4,7 +4,7 @@ import re
 
 from langchain_openai import ChatOpenAI
 
-from src.langchain.chains import MovieRAGChain
+from src.langchain.chains.abstract_chain import BaseChain
 from src.langchain.prompts import STREAM_PROMPT
 
 
@@ -26,13 +26,13 @@ class CitationStreamingWrapper:
 
     def __init__(
         self,
-        chain: MovieRAGChain,
+        chain: BaseChain,
         citation_pattern: str = r"\[(\d+)\]",
         verbose: bool = True,
     ) -> None:
         """
         Args:
-            chain: MovieRAGChain instance
+            chain: BaseChain instance
             citation_pattern: Regex to detect citations (default: [1], [2])
             verbose: If True, print to console
         """
