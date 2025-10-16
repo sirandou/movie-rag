@@ -182,6 +182,11 @@ def chunk(
 
         # Create chunk objects with metadata
         for chunk_idx, chunk_text in enumerate(chunks):
+            # Prepend movie title if not already present, so llm knows the name of the movie when recommending
+            if "Movie title:" not in chunk_text:
+                title = doc["metadata"].get("movie_title")
+                if title is not None:
+                    chunk_text = f"Movie title: {title}\n\n" + chunk_text
             chunk_obj = {
                 "text": chunk_text,
                 "metadata": {
