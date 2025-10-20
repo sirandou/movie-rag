@@ -6,13 +6,14 @@ import pandas as pd
 from src.data.document_creators import (
     create_plot_docs,
     create_review_docs,
+    create_poster_docs,
 )
 
 
 class MovieTextDocumentLoader(BaseLoader):
     """
     Langchain loader that uses custom document creation functions, and converts the documents to LangChain format.
-    Supports plots, reviews. DOES NOT support posters (posters are handled separately in VisualRetriever).
+    Supports plots, reviews. DOES NOT support posters.
     """
 
     def __init__(
@@ -208,5 +209,82 @@ class MovieTextDocumentLoader(BaseLoader):
         return documents
 
     def lazy_load(self) -> Iterator[Document]:
+        """Lazy loading for large datasets."""
+        return iter(self.load())
+
+
+class MoviePosterDocumentLoader(BaseLoader):
+    """
+    Loader that uses custom document creation functions for posters. No conversion to langchain needed, as
+    even in langchain visual retriever documents are handled as dicts.
+    """
+
+    def __init__(
+        self,
+        posters_path: str,
+        max_movies: int | None = None,
+    ):
+        """
+        Initialize loader.
+
+        Args:
+            posters_path: Path to movie_posters.csv
+            max_movies: Limit number of movies
+        """
+        self.posters_path = posters_path
+        self.max_movies = max_movies
+
+    def load(self, obj_metadata_cols: list[str] | None = None) -> List[dict]:
+        """Load all movie poster documents in dict format.
+        Returns:
+            List of dict objects
+        """
+        # Default obj metadata
+        if obj_metadata_cols is None:
+            obj_metadata_cols = [
+                "rotten_tomatoes_link",
+                "movie_title",
+                "release_year",
+                "original_release_date",
+                "authors",
+                "actors",
+                "production_company",
+                "genres",
+                "imdb_rating",
+                "box_office",
+                "content_rating",
+                "runtime",
+                "tomatometer_rating",
+                "tomatometer_count",
+                "audience_rating",
+                "audience_count",
+                "tomatometer_top_critics_count",
+                "tomatometer_fresh_critics_count",
+                "tomatometer_rotten_critics_count",
+            ]
+
+        # Load posters
+        print(f"Loading posters from {self.posters_path}...")
+
+        posters_df = pd.read_csv(self.posters_path)
+        posters_df["release_year"] = pd.to_datetime(
+            posters_df["original_release_date"]
+        ).dt.year
+
+        # Sample movies if needed
+        if self.max_movies:
+            posters_df = posters_df.drop_duplicates(
+                subset=["movie_title", "rotten_tomatoes_link", "original_release_date"]
+            )
+            posters_df = posters_df.sample(
+                n=self.max_movies, random_state=42
+            ).reset_index(drop=True)
+
+        posters_docs = create_poster_docs(posters_df, obj_metadata_cols)
+
+        print(f"  ✓ {len(posters_docs)} poster documents")
+        return posters_docs
+
+    def lazy_load(self) -> Iterator[dict]:
         """Lazy loading for large datasets."""
         return iter(self.load())

@@ -12,6 +12,7 @@ from langchain_openai import OpenAIEmbeddings
 
 from src.langchain.chunk import chunk_documents
 from src.langchain.retrieval.hyde import HyDERetriever
+from src.retrievers.base import CustomBaseRetriever
 from src.retrievers.factory import create_text_retriever
 from src.langchain.loaders import MovieTextDocumentLoader
 from src.langchain.retrieval.retrievers import TextRetrieverWrapper
@@ -39,7 +40,7 @@ class MovieRAGChain(BaseChain):
         max_movies: int = None,
         # Base Retriever
         use_custom_retriever: bool = True,
-        custom_retriever: BaseRetriever = None,
+        custom_retriever: CustomBaseRetriever = None,
         retriever_config: dict = {"type": "dense"},
         chunk_size: int = 800,
         chunk_overlap: int = 150,
@@ -67,7 +68,7 @@ class MovieRAGChain(BaseChain):
             reviews_path (str, optional): Path to the reviews CSV file.
             max_movies (int, optional): Maximum number of movies to load (for testing).
             use_custom_retriever (bool): If True, use a custom retriever instead of LangChain.
-            custom_retriever (BaseRetriever, optional): Pre-built custom retriever instance.
+            custom_retriever (CustomBaseRetriever, optional): Pre-built custom retriever instance.
             retriever_config (dict): Configuration for the custom retriever (if custom_retriever is None).
             chunk_size (int): Chunk size for the text splitter.
             chunk_overlap (int): Overlap size between text chunks.

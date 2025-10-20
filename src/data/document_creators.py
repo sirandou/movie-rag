@@ -127,11 +127,11 @@ def create_poster_docs(
         # Build concise text (CLIP limit: 77 tokens ≈ 60 words)
         parts = []
 
-        # Title (always include)
+        # Title
         if "movie_title" in row and pd.notna(row["movie_title"]):
             parts.append(row["movie_title"])
 
-        # Year (always include)
+        # Year
         if "release_year" in row and pd.notna(row["release_year"]):
             parts.append(f"({row['release_year']})")
 
@@ -140,12 +140,12 @@ def create_poster_docs(
             genres = str(row["genres"])[:50]  # Truncate if too long
             parts.append(genres)
 
-        # Director (optional, only if space)
+        # Director (only first)
         if "directors" in row and pd.notna(row["directors"]):
             directors = str(row["directors"]).split(",")[0]  # Just first director
             parts.append(f"directed by {directors}")
 
-        # Director (optional, only if space)
+        # Actors (first 5)
         if "actors" in row and pd.notna(row["actors"]):
             actors = (", ").join(str(row["actors"]).split(",")[:5])  # first 5 actors
             parts.append(f"actors: {actors}")
