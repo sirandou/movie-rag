@@ -86,6 +86,6 @@ class HyDERetriever(BaseRetriever):
         """Generate hypothetical perfect document (answer)."""
         prompt_value = self.hyde_prompt.format(pre_hyde_query=query)
 
-        response = self.llm.predict(prompt_value)
+        response = self.llm.invoke(prompt_value).content
 
         return response.strip()

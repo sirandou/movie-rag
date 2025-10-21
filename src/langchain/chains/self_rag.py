@@ -1,6 +1,7 @@
 from typing import Any
 
-from src.langchain.chains.abstract_chain import BaseChain
+from src.langchain.chains.base import BaseChain
+from src.langchain.prompts import SELF_RAG_CRITIQUE_PROMPT, SELF_RAG_REFINE_PROMPT
 
 
 class SelfRAGWrapper:
@@ -55,17 +56,7 @@ class SelfRAGWrapper:
 
     def _critique(self, question: str, answer: str) -> str:
         """Critique answer quality."""
-        prompt = f"""Evaluate this answer. Respond with ONE word: GOOD or BAD
-
-Question: {question}
-Answer: {answer}
-
-Is it:
-- Complete (answers all aspects)?
-- Specific (uses details, not vague)?
-- Clear (well-explained)?
-
-ONE WORD: """
+        prompt = SELF_RAG_CRITIQUE_PROMPT.format(question=question, answer=answer)
 
         return self.llm.predict(prompt).strip()
 
@@ -76,15 +67,8 @@ ONE WORD: """
             [f"Source {i}: {s['content']}" for i, s in enumerate(sources[:5], 1)]
         )
 
-        prompt = f"""The answer below needs improvement. Make it more complete and specific using ONLY information from the sources.
-
-Question: {question}
-
-Current answer: {answer}
-
-Sources to use:
-{sources_text}
-
-Improved answer (be specific, use details from sources):"""
+        prompt = SELF_RAG_REFINE_PROMPT.format(
+            question=question, answer=answer, sources_text=sources_text
+        )
 
         return self.llm.predict(prompt).strip()

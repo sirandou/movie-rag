@@ -17,7 +17,7 @@ from src.retrievers.factory import create_text_retriever
 from src.langchain.loaders import MovieTextDocumentLoader
 from src.langchain.retrieval.retrievers import TextRetrieverWrapper
 from langchain.prompts.base import BasePromptTemplate
-from src.langchain.chains.abstract_chain import BaseChain
+from src.langchain.chains.base import BaseChain
 
 
 class MovieRAGChain(BaseChain):

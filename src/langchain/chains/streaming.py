@@ -4,7 +4,7 @@ import re
 
 from langchain_openai import ChatOpenAI
 
-from src.langchain.chains.abstract_chain import BaseChain
+from src.langchain.chains.base import BaseChain
 from src.langchain.prompts import STREAM_PROMPT
 
 

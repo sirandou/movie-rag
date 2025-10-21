@@ -1,6 +1,3 @@
-# src/langchain/prompts.py
-"""Prompt templates for movie recommendations."""
-
 from langchain.prompts import PromptTemplate, FewShotPromptTemplate
 
 # Zero-shot
@@ -91,4 +88,75 @@ Write as if you're a movie expert giving the ideal response.
 Question: {pre_hyde_query}
 
 Expert Answer:""",
+)
+
+# Self-RAG critique prompt
+SELF_RAG_CRITIQUE_PROMPT = PromptTemplate(
+    input_variables=["question", "answer"],
+    template="""Evaluate this answer. Respond with ONE word: GOOD or BAD
+
+Question: {question}
+Answer: {answer}
+
+Is it:
+- Complete (answers all aspects)?
+- Specific (uses details, not vague)?
+- Clear (well-explained)?
+
+ONE WORD: """,
+)
+
+# Self-RAG refine prompt
+SELF_RAG_REFINE_PROMPT = PromptTemplate(
+    input_variables=["question", "answer", "sources_text"],
+    template="""The answer below needs improvement. Make it more complete and specific using ONLY information from the sources.
+
+Question: {question}
+
+Current answer: {answer}
+
+Sources to use:
+{sources_text}
+
+Improved answer (be specific, use details from sources):""",
+)
+
+# multimodal router prompt
+ROUTER_PROMPT = PromptTemplate(
+    input_variables=["query"],
+    template="""You are a router for a movie QA system. Given the user query, decide if it needs:
+- text retrieval,
+- visual retrieval, or
+- both.
+
+Query: "{query}"
+
+Answer with one of TEXT, VISUAL, BOTH:""",
+)
+
+# multimodal visual prompt
+VISUAL_RAG_PROMPT = PromptTemplate(
+    input_variables=["question", "movies_desc"],
+    template="""You are a helpful movie assistant. The following are visual search results for the query {question}.
+Each result includes a poster description.
+
+Results:
+{movies_desc}
+
+Summarize what these posters have in common and what kind of films they likely represent.""",
+)
+
+# multimodal combined prompt
+COMBINED_RAG_PROMPT = PromptTemplate(
+    input_variables=["question", "text_answer", "movies_desc"],
+    template="""You are a helpful movie assistant. The question is: "{question}".
+
+Textual answer (from plot/reviews):
+{text_answer}
+
+Visually matching movies (from poster analysis):
+{movies_desc}
+
+Answer the user's question by combining BOTH the textual information and visual matches. Explain which movies align both textually and visually, and why.
+""",
 )

@@ -1,6 +1,7 @@
 from typing import Dict, Any, Literal
 
-from src.langchain.chains.abstract_chain import BaseChain
+from src.langchain.chains.base import BaseChain
+from src.langchain.prompts import ROUTER_PROMPT, VISUAL_RAG_PROMPT, COMBINED_RAG_PROMPT
 from src.retrievers.visual_retriever import VisualRetriever
 
 
@@ -83,17 +84,7 @@ class MultiModalMovieRouter:
             else:
                 route = "text"
         else:
-            router_prompt = f"""
-                You are a router for a movie QA system.
-                Given the user query, decide if it needs:
-                - text retrieval,
-                - visual retrieval, or
-                - both.
-
-                Query: "{query}"
-
-                Answer with one of TEXT, VISUAL, BOTH:
-                """
+            router_prompt = ROUTER_PROMPT.format(query=query)
             route = self.llm.invoke(router_prompt).content.strip().lower()
 
         if "both" in route:
@@ -125,20 +116,17 @@ class MultiModalMovieRouter:
                 "title": doc["metadata"].get("movie_title", "Unknown"),
                 "score": float(score),
                 "year": doc["metadata"].get("release_year", "N/A"),
-                "poster_text": doc["text_content"],
+                "poster_text": doc.get(
+                    "text_content", ""
+                ),  # Poster text itself includes name and year
                 "poster_path": doc["poster_path"],
             }
             for doc, score in results
         ]
 
-        prompt = f"""
-        You are a helpful movie assistant. The following are visual search results for the query "{question}".
-        Each result includes a poster description.
+        movies_desc = "\n".join([f"- {movie['poster_text']}" for movie in movies])
 
-        {"\n".join([movie["poster_text"] for movie in movies])}
-
-        Summarize what these posters have in common and what kind of films they likely represent.
-        """
+        prompt = VISUAL_RAG_PROMPT.format(question=question, movies_desc=movies_desc)
         answer = self.llm.invoke(prompt).content
 
         print(answer)
@@ -168,17 +156,13 @@ class MultiModalMovieRouter:
             for doc, score in visual_results
         ]
 
-        prompt = f"""
-        You are a helpful movie assistant. The question is: "{question}".
+        movies_desc = "\n".join([movie["poster_text"] for movie in visual_movies])
 
-        Textual answer (from plot/reviews):
-        {text_result["answer"]}
-
-        Relevant posters:
-        {"\n".join([movie["poster_text"] for movie in visual_movies])}
-
-        Answer the user's question based on the retrieved Results. Explain which movies align both textually and visually, and why.
-        """
+        prompt = COMBINED_RAG_PROMPT.format(
+            question=question,
+            text_answer=text_result["answer"],
+            movies_desc=movies_desc,
+        )
         answer = self.llm.invoke(prompt).content
         print(answer)
 
