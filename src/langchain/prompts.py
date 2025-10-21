@@ -160,3 +160,30 @@ Visually matching movies (from poster analysis):
 Answer the user's question by combining BOTH the textual information and visual matches. Explain which movies align both textually and visually, and why.
 """,
 )
+
+# sql tool prompt
+SQL_TOOL_PROMPT = PromptTemplate(
+    input_variables=["question"],
+    template="""Convert this question to a SQL query.
+
+Database schema:
+Table: movies
+- rotten_tomatoes_link (TEXT, primary key)
+- movie_title (TEXT)
+- release_year (INTEGER)
+- streaming_release_date (TEXT)
+- imdb_rating, tomatometer_rating, audience_rating (REAL)
+- runtime (REAL, in minutes)
+- genres, directors, actors, authors (TEXT, comma-separated)
+- awards, box_office, content_rating, production_company (TEXT)
+- tomatometer_status, audience_status (TEXT)
+- audience_count, tomatometer_count, tomatometer_top_critics_count, tomatometer_fresh_critics_count, tomatometer_rotten_critics_count (INTEGER)
+
+Notes:
+- For genre/director/actor searches, use: WHERE genres LIKE '%Sci-Fi%'
+- Ratings are 0-10 scale (imdb) or 0-100 (tomatometer/audience)
+
+Question: {question}
+
+SQL query only:""",
+)
