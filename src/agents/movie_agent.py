@@ -7,11 +7,12 @@ from langgraph.prebuilt import ToolNode
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 
-from src.agents.tools import (
+from src.agents.tools.collaborative_filtering import CollaborativeFilteringTool
+from src.agents.tools.sql_tool import SQLMovieTool
+from src.agents.tools.multimodal_rag import (
     TextMovieTool,
     VisualMovieTool,
     CombinedMovieTool,
-    SQLMovieTool,
 )
 from src.langchain.chains.movie_rag import MovieRAGChain
 from src.retrievers.visual_retriever import VisualRetriever
@@ -50,7 +51,14 @@ class MovieAgent:
             text_chain, visual_retriever, llm_model, llm_temperature
         ).get_tool()
         sql_tool = SQLMovieTool(llm_model, llm_temperature).get_tool()
-        self.tools = [text_tool, visual_tool, combined_tool, sql_tool]
+        item_based_cf_tool = CollaborativeFilteringTool().get_tool()
+        self.tools = [
+            text_tool,
+            visual_tool,
+            combined_tool,
+            sql_tool,
+            item_based_cf_tool,
+        ]
 
         # Bind tools to LLM
         llm = ChatOpenAI(model=llm_model, temperature=llm_temperature)
