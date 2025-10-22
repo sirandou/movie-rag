@@ -7,10 +7,9 @@ from rapidfuzz import process
 
 
 class CollaborativeFilteringTool:
-
     def __init__(
-            self,
-            reviews_path: str = "/Users/saghar/Desktop/movie-rag/datasets/rotten-tomatoes-reviews/prep/reviews_w_movies_full.csv",
+        self,
+        reviews_path: str = "/Users/saghar/Desktop/movie-rag/datasets/rotten-tomatoes-reviews/prep/reviews_w_movies_full.csv",
     ):
         """
         Collaborative filtering using cosine similarity.
@@ -23,7 +22,10 @@ class CollaborativeFilteringTool:
         # Build user-movie rating matrix
         # Use movie id as movie titles have overlaps
         self.rating_matrix = self.df.pivot_table(
-            index="critic_name", columns="rotten_tomatoes_link", values="rating_normalized", aggfunc="mean"
+            index="critic_name",
+            columns="rotten_tomatoes_link",
+            values="rating_normalized",
+            aggfunc="mean",
         )
         print(
             f"Loaded {len(self.rating_matrix)} critics, {len(self.rating_matrix.columns)} movies, {self.rating_matrix.count().sum()} ratings."
@@ -32,17 +34,25 @@ class CollaborativeFilteringTool:
         self.rating_matrix_filled = self.rating_matrix.fillna(0)
 
         # Mappings (handle duplicates)
-        df_unique = self.df.drop_duplicates(subset=['rotten_tomatoes_link'])
+        df_unique = self.df.drop_duplicates(subset=["rotten_tomatoes_link"])
         # 1. movie_key → imdb_id (for user input). E.g., "Inception (2010)" → "tt1375666"
-        self.key_to_id = df_unique.set_index('movie_key')['rotten_tomatoes_link'].to_dict()
+        self.key_to_id = df_unique.set_index("movie_key")[
+            "rotten_tomatoes_link"
+        ].to_dict()
         # 2. imdb_id → movie_key (for display). E.g., "tt1375666" → "Inception (2010)"
-        self.id_to_key = df_unique.set_index('rotten_tomatoes_link')['movie_key'].to_dict()
+        self.id_to_key = df_unique.set_index("rotten_tomatoes_link")[
+            "movie_key"
+        ].to_dict()
         # 3. Also keep title-only lookup for fuzzy matching. E.g., "Inception" → ["Inception (2010)", "Inception (2015)"]
-        self.title_to_keys = df_unique.groupby('movie_title')['movie_key'].apply(list).to_dict()
+        self.title_to_keys = (
+            df_unique.groupby("movie_title")["movie_key"].apply(list).to_dict()
+        )
 
         # lower-case names
         self.key_to_id = {k.lower(): v for k, v in self.key_to_id.items()}
-        self.title_to_keys = {k.lower(): [t.lower() for t in v] for k, v in self.title_to_keys.items()}
+        self.title_to_keys = {
+            k.lower(): [t.lower() for t in v] for k, v in self.title_to_keys.items()
+        }
 
         # Pre-compute movie-movie similarity matrix (item-based CF)
         self.movie_similarity = cosine_similarity(self.rating_matrix_filled.T)
@@ -58,16 +68,15 @@ class CollaborativeFilteringTool:
         """Load and preprocess reviews CSV."""
         df = pd.read_csv(reviews_csv)
         # Format and keep numerical ratings only
-        df['rating_normalized'] = df['review_score'].apply(normalize_rating)
-        df = df.dropna(subset=['rating_normalized'])
+        df["rating_normalized"] = df["review_score"].apply(normalize_rating)
+        df = df.dropna(subset=["rating_normalized"])
         # Drop nan reviewer names
-        df = df.dropna(subset=['critic_name'])
+        df = df.dropna(subset=["critic_name"])
         # Add release year
         df["release_year"] = pd.to_datetime(df["original_release_date"]).dt.year
         # Add movie key since titles can overlap
-        df['movie_key'] = (
-                df['movie_title'] + ' (' +
-                df['release_year'].astype(str) + ')'
+        df["movie_key"] = (
+            df["movie_title"] + " (" + df["release_year"].astype(str) + ")"
         )
 
         return df
@@ -78,7 +87,7 @@ class CollaborativeFilteringTool:
 
         @tool
         def recommend_by_similar_taste(
-                movie_titles: str, num_recommendations: int = 5
+            movie_titles: str, num_recommendations: int = 5
         ) -> str:
             """
             Recommend movies with similar rating patterns.
@@ -124,8 +133,9 @@ class CollaborativeFilteringTool:
                             available_ids.append(self.key_to_id[matched_keys[0]])
                         else:
                             # Multiple matches: Return error asking for clarification
-                            result[
-                                "warnings"] += f"Warning: Multiple movies found for {title}. Options: {matched_keys}. "
+                            result["warnings"] += (
+                                f"Warning: Multiple movies found for {title}. Options: {matched_keys}. "
+                            )
                         continue
 
                     # Try Fuzzy match: partial or misspelled titles
@@ -138,14 +148,17 @@ class CollaborativeFilteringTool:
                         continue
 
                     options = [m[0] for m in matches]
-                    result[
-                        "warnings"] += f"Warning: Multiple close matches found for {title}, it might also not be available in dataset. Options: {options}. "
+                    result["warnings"] += (
+                        f"Warning: Multiple close matches found for {title}, it might also not be available in dataset. Options: {options}. "
+                    )
 
                 if len(available_ids) < 1:
-                    return json.dumps({
-                        "warnings": result["warnings"],
-                        "error": "None of the provided movies were found.",
-                    })
+                    return json.dumps(
+                        {
+                            "warnings": result["warnings"],
+                            "error": "None of the provided movies were found.",
+                        }
+                    )
 
                 # For each input movie, get similarity scores with other movies. Then
                 # aggregate across all input movies by averaging.
@@ -217,28 +230,36 @@ def normalize_rating(rating_str: str) -> float:
     - Letter grades: "A", "B+", "C-"
     - Nulls: "<null>", NaN
     """
-    if pd.isna(rating_str) or rating_str == '<null>' or rating_str == '':
+    if pd.isna(rating_str) or rating_str == "<null>" or rating_str == "":
         return np.nan
 
     rating_str = str(rating_str).strip().replace(" ", "")
 
     # Handle fractions (2.5/4, 3/5)
-    if '/' in rating_str:
+    if "/" in rating_str:
         try:
-            score, max_score = rating_str.split('/')
+            score, max_score = rating_str.split("/")
             score = float(score)
             max_score = float(max_score)
             return (score / max_score) * 10
-        except:
+        except:  # noqa: E722
             return np.nan
 
     # Handle letter grades (A, B+, C-)
     letter_grade_map = {
-        'A+': 10.0, 'A': 9.5, 'A-': 9.0,
-        'B+': 8.5, 'B': 8.0, 'B-': 7.5,
-        'C+': 7.0, 'C': 6.5, 'C-': 6.0,
-        'D+': 5.5, 'D': 5.0, 'D-': 4.5,
-        'F': 3.0
+        "A+": 10.0,
+        "A": 9.5,
+        "A-": 9.0,
+        "B+": 8.5,
+        "B": 8.0,
+        "B-": 7.5,
+        "C+": 7.0,
+        "C": 6.5,
+        "C-": 6.0,
+        "D+": 5.5,
+        "D": 5.0,
+        "D-": 4.5,
+        "F": 3.0,
     }
 
     rating_upper = rating_str.upper()
@@ -254,7 +275,7 @@ def normalize_rating(rating_str: str) -> float:
         # If it's 0-100, scale down
         elif 0 <= numeric <= 100:
             return numeric / 10
-    except:
+    except:  # noqa: E722
         pass
 
     # Unknown format (this never happens with the current data)
