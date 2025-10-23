@@ -1,15 +1,43 @@
 # Movie RAG System
 
-A Retrieval-Augmented Generation (RAG) system for movie information using multi-modal data from Rotten Tomatoes 
-and OMDB. 
+A comprehensive RAG system for movie information, built with multi-modal data from Rotten Tomatoes and OMDB. Features custom retrievers, advanced RAG patterns, and an intelligent agent that combines multiple search strategies.
 
-## Features
+## Project Components
 
-- **Hybrid Retrieval for Text**: Configurable dense, sparse, or hybrid retrieval strategies
-  - **Flexible Dense Backends**: FAISS or in-memory
-  - **Multiple Embedding Models**: Support for Sentence Transformers and OpenAI embeddings
-- **Visual Search**: CLIP-based fused poster image + movie info text embeddings for visual search
-- **Comprehensive Dataset**: 8,000+ movies with reviews, 6,000+ plot summaries, 6000+ poster images
+### 1. Datasets
+- **8,000+ movies** with critic reviews from Rotten Tomatoes
+- **6,000+ plot summaries** from OMDB
+- **6,000+ poster images** from OMDB
+- **SQLite database** with structured movie metadata (ratings, genres, cast, etc.)
+
+### 2. Retrievers
+**Text Retrievers** (plots and reviews):
+- **Dense**: FAISS or in-memory with configurable embeddings (Sentence Transformers, OpenAI)
+- **Sparse**: BM25 keyword search
+- **Hybrid**: Weighted combination of dense + sparse
+
+**Visual Retriever**:
+- CLIP-based embeddings with configurable text/image fusion weights
+
+### 3. RAG Chains & Patterns
+**Base Chains**:
+- **Text RAG**: Question answering over plot summaries and reviews
+- **Multimodal RAG**: Combined text + visual search with image inputs
+
+**Advanced Patterns**:
+- **HyDE**: Hypothetical Document Embeddings for query expansion
+- **Reranking**: Cross-encoder reranking for improved relevance
+- **Self-RAG**: Self-critique and refinement
+- **Streaming**: Token-by-token streaming responses
+- **Evaluation**: RAGAS metrics for RAG quality assessment
+
+### 4. AI Agent
+**ReAct Agent** (LangGraph) with multiple tools:
+- Text RAG search
+- Visual RAG search
+- Multimodal (text + image) search
+- SQL queries over structured metadata
+- Collaborative filtering recommendations (item-based, using critic rating patterns)
 
 ## Quick Start
 
@@ -49,29 +77,28 @@ and OMDB.
 
 ### Dataset Setup
 
-Follow the steps in [datasets/rotten-tomatoes-reviews/README.md](datasets/rotten-tomatoes-reviews/README.md) to prepare the datasets:
+Follow the steps in [datasets/rotten-tomatoes-reviews/README.md](datasets/rotten-tomatoes-reviews/README.md) to prepare the datasets.
 
-## Architecture
+## Codebase Overview
 
-### Retriever Types
-
-- **Dense Retriever** (`FaissDenseRetriever`, `InMemoryDenseRetriever`): Semantic search using embeddings
-- **Sparse Retriever** (`BM25SparseRetriever`): Keyword-based search using BM25 algorithm
-- **Hybrid Retriever** (`HybridRetriever`): Combines dense and sparse with configurable weighting
-- **Visual Retriever** (`VisualRetriever`): CLIP-based poster image + movie info text search with configurable 
-weight for text and image fusion
-
-### Document Processing
-
-- **Document Creators**: Convert DataFrames to RAG-ready documents (`src/data/document_creators.py`)
-- **Chunking**: Text chunking for optimal retrieval (`src/data/chunk.py`)
-- **Embeddings**: Support for multiple embedding providers (`src/utils/embeddings.py`, `src/utils/clip_embeddings.py`)
+- **`notebooks/data_prep/`**: Scripts for creating dataset files (plots, reviews, posters, SQLite DB)
+- **`notebooks/`**: Demos and examples for retrievers, RAG chains, agents, and evaluation
+- **`src/data/`**: Document creation, chunking strategies, and SQLite database setup
+- **`src/retrievers/`**: Core retriever implementations (dense, sparse, hybrid, visual)
+- **`src/utils/`**: Embedding models and LLM utilities
+- **`src/langchain/`**: RAG infrastructure
+  - Document loaders, chunking, and retriever wrappers
+  - RAG chains (text, multimodal) and advanced patterns (HyDE, Self-RAG, reranking)
+  - Prompts, streaming, and evaluation (RAGAS)
+- **`src/agents/`**: ReAct agent and tools (RAG search, SQL, collaborative filtering)
 
 ## Usage
 
-### Retrieval
-
-Examples for full retrieval pipeline: [notebooks/3-retrieval-text.ipynb](notebooks/3-retrieval-text.ipynb), [notebooks/5-retrieval-visual.ipynb](notebooks/5-retrieval-visual.ipynb)
+### Examples
+- **Retrieval**: [notebooks/3-retrieval-text.ipynb](notebooks/3-retrieval-text.ipynb), [notebooks/5-retrieval-visual.ipynb](notebooks/5-retrieval-visual.ipynb)
+- **RAG Chains**: [notebooks/6-langchain-rag.ipynb](notebooks/6-langchain-rag.ipynb), [notebooks/10-multimodal-full-chain.ipynb](notebooks/10-multimodal-full-chain.ipynb)
+- **Advanced Patterns**: [notebooks/7-langchain-rerank.ipynb](notebooks/7-langchain-rerank.ipynb), [notebooks/8-hyde-stream-langsmith.ipynb](notebooks/8-hyde-stream-langsmith.ipynb), [notebooks/9-selfrag-ragas.ipynb](notebooks/9-selfrag-ragas.ipynb)
+- **Agent**: [notebooks/11-multimodal-react-agent.ipynb](notebooks/11-multimodal-react-agent.ipynb)
 
 ## Development
 
@@ -93,20 +120,6 @@ make clean               # Remove cache and temp files
 
 # Git Hooks
 make setup-hooks         # Setup pre-commit hooks
-```
-
-### Project Structure
-
-```
-movie-rag/
-├── src/
-│   ├── data/               # Document creation and chunking
-│   ├── retrievers/         # Retriever implementations
-│   └── utils/              # Embedding utilities
-├── datasets/               # Movie datasets (reviews, plots, posters)
-├── notebooks/              # Jupyter notebooks for experimentation
-├── tests/                  # Test suite
-└── pyproject.toml          # Poetry configuration
 ```
 
 ## License
