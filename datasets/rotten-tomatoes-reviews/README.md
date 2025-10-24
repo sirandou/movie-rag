@@ -1,4 +1,4 @@
-## Rotten tomatoes reviews dataset
+## Rotten tomatoes reviews, OMDB plots and posters dataset
 
 # raw
 Download dataset from [Kaggle](https://www.kaggle.com/datasets/stefanoleone992/rotten-tomatoes-movies-and-critic-reviews-dataset/data) and put the csv filed under raw.
