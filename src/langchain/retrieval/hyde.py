@@ -74,7 +74,7 @@ class HyDERetriever(BaseRetriever):
         hypothetical_doc = self._generate_hypothetical_doc(query)
 
         # 2. Search using hypothetical document instead of query
-        documents = self.base_retriever.get_relevant_documents(hypothetical_doc)
+        documents = self.base_retriever.invoke(hypothetical_doc)
 
         # 3. Add HyDE metadata
         for doc in documents:

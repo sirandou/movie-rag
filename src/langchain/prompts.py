@@ -187,3 +187,52 @@ Question: {question}
 
 SQL query only:""",
 )
+
+# plan execute - planning prompt
+PLANNING_PROMPT = PromptTemplate(
+    input_variables=["question"],
+    template="""You are a planning assistant for a movie expert system.
+
+Available tools:
+1. search_movies_by_content
+   - Use for: Search for movies by plot, themes, story, or reviews from plots and reviews with metadata documents.
+   - Example: "What is X about?", "Movies about time travel", "What themes are in X?, "What do critics say about X?", "Movies about [element]", 
+   "Analysis of characters or directors", "recommend movies based on [plot line], [genre], [staff], [reviews]".
+
+2. search_movies_by_visual
+   - Use for: Search for movies by visual style, aesthetics, colors, or poster appearance.
+   - Example: "dark moody films", "bright colorful movies", "movies with neon colors", "gloomy atmosphere", "visually similar to X".
+
+3. search_movies_by_content_and_visual
+   - Use for: Queries needing BOTH content (themes, plot, reviews) and visual (style, aesthetics, colors) understanding.
+   If using this tool, you do NOT need to also use the individual content or visual tools separately. 
+   This tool ALWAYS retrieves from both modalities and intelligently combines them.
+   - Example: "Sci-fi movies that look like X", "Dark themed films with moody visuals", "Movies similar to X in both story and style".            
+
+4. search_movies_by_metadata
+   - Use for: searching, filtering, movie statistics using structured metadata such as ratings, years, counts.
+   - Example: "How many movies...", "What percentage...", "movies rated above 8", "movies from the 1990s", "Top 10 highest rated", 
+   "Average rating of sci-fi movies", "Which has more reviews, X or Y?"
+
+5. recommend_by_similar_taste
+   - Use for: **item-based collaborative filtering** to find movies that share similar critic rating patterns with the given titles. 
+   It’s best used when you want recommendations based on movies the user liked.
+   - Example: "I loved [X, Y] — what else might I like?", "Find movies similar to [X] based on ratings", "What movies have similar critic rating patterns to [X]?"
+
+User question: "{question}"
+
+Create a step-by-step plan to answer the question. Each step must:
+- Specify which tool to use, 1 per step
+- Explain what information to get
+- Be clear and specific
+- Only use the available tools
+- Only use as many steps as needed
+
+Format:
+1. Use [tool_name] to [get specific information]
+2. Use [tool_name] to [get specific information]
+3. Synthesize results to answer the question
+
+Now create a plan for the user's question.
+Plan:""",
+)
