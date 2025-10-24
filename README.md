@@ -42,7 +42,6 @@ A comprehensive RAG system for movie information, built with multi-modal data fr
 **Plan-Execute Agent** (LangGraph):
 - Multi-step planning for complex queries
 - Executes planned steps using available tools
-- Replanning based on execution results
 
 ## Quick Start
 
