@@ -31,13 +31,18 @@ A comprehensive RAG system for movie information, built with multi-modal data fr
 - **Streaming**: Token-by-token streaming responses
 - **Evaluation**: RAGAS metrics for RAG quality assessment
 
-### 4. AI Agent
+### 4. AI Agents
 **ReAct Agent** (LangGraph) with multiple tools:
 - Text RAG search
 - Visual RAG search
 - Multimodal (text + image) search
 - SQL queries over structured metadata
 - Collaborative filtering recommendations (item-based, using critic rating patterns)
+
+**Plan-Execute Agent** (LangGraph):
+- Multi-step planning for complex queries
+- Executes planned steps using available tools
+- Replanning based on execution results
 
 ## Quick Start
 
@@ -90,7 +95,7 @@ Follow the steps in [datasets/rotten-tomatoes-reviews/README.md](datasets/rotten
   - Document loaders, chunking, and retriever wrappers
   - RAG chains (text, multimodal) and advanced patterns (HyDE, Self-RAG, reranking)
   - Prompts, streaming, and evaluation (RAGAS)
-- **`src/agents/`**: ReAct agent and tools (RAG search, SQL, collaborative filtering)
+- **`src/agents/`**: ReAct and Plan-Execute agents with tools (RAG search, SQL, collaborative filtering)
 
 ## Usage
 
@@ -98,7 +103,7 @@ Follow the steps in [datasets/rotten-tomatoes-reviews/README.md](datasets/rotten
 - **Retrieval**: [notebooks/3-retrieval-text.ipynb](notebooks/3-retrieval-text.ipynb), [notebooks/5-retrieval-visual.ipynb](notebooks/5-retrieval-visual.ipynb)
 - **RAG Chains**: [notebooks/6-langchain-rag.ipynb](notebooks/6-langchain-rag.ipynb), [notebooks/10-multimodal-full-chain.ipynb](notebooks/10-multimodal-full-chain.ipynb)
 - **Advanced Patterns**: [notebooks/7-langchain-rerank.ipynb](notebooks/7-langchain-rerank.ipynb), [notebooks/8-hyde-stream-langsmith.ipynb](notebooks/8-hyde-stream-langsmith.ipynb), [notebooks/9-selfrag-ragas.ipynb](notebooks/9-selfrag-ragas.ipynb)
-- **Agent**: [notebooks/11-multimodal-react-agent.ipynb](notebooks/11-multimodal-react-agent.ipynb)
+- **Agents**: [notebooks/11-multimodal-react-agent.ipynb](notebooks/11-multimodal-react-agent.ipynb), [notebooks/12-plan_execute.ipynb](notebooks/12-plan_execute.ipynb)
 
 ## Development
 
