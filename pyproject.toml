@@ -3,7 +3,11 @@ name = "movie-rag"
 version = "0.1.0"
 description = "Movie review agent"
 authors = ["Saghar Irandoust"]
+license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/sirandou/movie-rag"
+repository = "https://github.com/sirandou/movie-rag"
+keywords = ["rag", "retrieval", "langchain", "openai", "machine-learning", "nlp", "movies", "multimodal", "ai-agents"]
 packages = [{include = "src"}]
 
 [tool.poetry.dependencies]

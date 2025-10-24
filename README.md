@@ -84,6 +84,22 @@ A comprehensive RAG system for movie information, built with multi-modal data fr
 
 Follow the steps in [datasets/rotten-tomatoes-reviews/README.md](datasets/rotten-tomatoes-reviews/README.md) to prepare the datasets.
 
+### API Keys
+
+**Never commit API keys to the repository.** Store them as environment variables:
+
+```bash
+# Required
+export OPENAI_API_KEY="your-key-here"
+export OMDB_API_KEY="your-key-here"
+export POSTER_API_KEY="your-key-here"
+
+# Optional (for LangSmith tracing)
+export LANGCHAIN_API_KEY="your-key-here"
+export LANGCHAIN_TRACING_V2="true"
+export LANGCHAIN_ENDPOINT="https://api.smith.langchain.com"
+```
+
 ## Codebase Overview
 
 - **`notebooks/data_prep/`**: Scripts for creating dataset files (plots, reviews, posters, SQLite DB)
