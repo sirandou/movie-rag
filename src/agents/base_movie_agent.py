@@ -19,6 +19,8 @@ class MovieAgent(ABC):
         self,
         text_chain: MovieRAGChain,
         visual_retriever: VisualRetriever,
+        sql_database_path: str,
+        reviews_csv_path: str,
         llm_model: str = "gpt-4o-mini",
         llm_temperature: float = 0.0,
     ) -> None:
@@ -27,6 +29,8 @@ class MovieAgent(ABC):
         Args:
             - text_chain: MovieRAGChain instance
             - visual_retriever: VisualRetriever instance
+            - sql_database_path: path to SQLite database for SQL tool
+            - reviews_csv_path: path to reviews CSV for collaborative filtering tool
             - llm_model: language model name
             - llm_temperature: llm temperature
         """
@@ -41,8 +45,12 @@ class MovieAgent(ABC):
         combined_tool = CombinedMovieTool(
             text_chain, visual_retriever, llm_model, llm_temperature
         ).get_tool()
-        sql_tool = SQLMovieTool(llm_model, llm_temperature).get_tool()
-        item_based_cf_tool = CollaborativeFilteringTool().get_tool()
+        sql_tool = SQLMovieTool(
+            sql_database_path, llm_model, llm_temperature
+        ).get_tool()
+        item_based_cf_tool = CollaborativeFilteringTool(
+            reviews_path=reviews_csv_path
+        ).get_tool()
         self.tools = [
             text_tool,
             visual_tool,

@@ -40,7 +40,7 @@ A comprehensive RAG system for movie information, built with multi-modal data fr
 - Collaborative filtering recommendations (item-based, using critic rating patterns)
 
 **Plan-Execute Agent** (LangGraph):
-- Multi-step planning for complex queries
+- Multistep planning for complex queries
 - Executes planned steps using available tools
 
 ## Quick Start
@@ -78,6 +78,10 @@ A comprehensive RAG system for movie information, built with multi-modal data fr
    # Full installation (all dependencies including RAG components)
    make install-all
    ```
+
+### Configure Notebook Paths
+
+Before running any notebooks, update the file paths defined at the beginning of each notebook to match your local environment.
 
 ### Dataset Setup
 

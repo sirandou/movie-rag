@@ -7,15 +7,16 @@ from src.langchain.prompts import SQL_TOOL_PROMPT
 
 class SQLMovieTool:
     def __init__(
-        self, llm_model: str = "gpt-4o-mini", llm_temperature: float = 0.0
+        self, db_path: str, llm_model: str = "gpt-4o-mini", llm_temperature: float = 0.0
     ) -> None:
         """
         SQL tool for structured queries about movies.
         Args:
+            db_path: path to SQLite database
             llm_model: language model name
             llm_temperature: llm temperature
         """
-        self.db = MovieDatabase()
+        self.db = MovieDatabase(db_path=db_path)
         self.db.connect()
         self.llm = ChatOpenAI(model=llm_model, temperature=llm_temperature)
 

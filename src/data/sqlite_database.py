@@ -10,7 +10,7 @@ class MovieDatabase:
 
     def __init__(
         self,
-        db_path: str = "/Users/saghar/Desktop/movie-rag/datasets/rotten-tomatoes-reviews/prep/movies_meta.db",
+        db_path: str,
     ) -> None:
         """
         Args:
@@ -157,18 +157,16 @@ class MovieDatabase:
             self.conn.close()
 
 
-def setup_database(verbose: bool = True) -> None:
+def setup_database(db_path: str, csv_path: str, verbose: bool = True) -> None:
     """Initialize database with plots CSV."""
     print("=" * 60)
     print("Setting up movie database")
     print("=" * 60)
 
-    db = MovieDatabase()
+    db = MovieDatabase(db_path=db_path)
     db.connect()
     db.create_tables()
-    db.load_from_csv(
-        "/Users/saghar/Desktop/movie-rag/datasets/rotten-tomatoes-reviews/prep/reviews_w_movies_full.csv"
-    )
+    db.load_from_csv(csv_path)
 
     if verbose:
         # Test queries
@@ -205,7 +203,3 @@ def setup_database(verbose: bool = True) -> None:
 
     print("\nDatabase ready at datasets/rotten-tomatoes-reviews/prep/movies_meta.db")
     db.close()
-
-
-if __name__ == "__main__":
-    setup_database()

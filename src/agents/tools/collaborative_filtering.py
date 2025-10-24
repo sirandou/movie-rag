@@ -9,7 +9,7 @@ from rapidfuzz import process
 class CollaborativeFilteringTool:
     def __init__(
         self,
-        reviews_path: str = "/Users/saghar/Desktop/movie-rag/datasets/rotten-tomatoes-reviews/prep/reviews_w_movies_full.csv",
+        reviews_path: str,
     ):
         """
         Collaborative filtering using cosine similarity.
