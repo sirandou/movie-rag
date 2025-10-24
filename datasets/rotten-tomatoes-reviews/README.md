@@ -4,7 +4,7 @@
 Download dataset from [Kaggle](https://www.kaggle.com/datasets/stefanoleone992/rotten-tomatoes-movies-and-critic-reviews-dataset/data) and put the csv files under [raw](raw).
 
 # prep
-Dataset in the prep folder is created by running notebook scripts [notebooks/data_prep/prep_rotten_tomatoes_data.ipynb](../../notebooks/data_prep/prep_rotten_tomatoes_data.ipynb), 
+Dataset in the [prep](prep) folder is created by running notebook scripts [notebooks/data_prep/prep_rotten_tomatoes_data.ipynb](../../notebooks/data_prep/prep_rotten_tomatoes_data.ipynb), 
 [notebooks/data_prep/create_omdb_plots_data.ipynb](../../notebooks/data_prep/create_omdb_plots_data.ipynb), 
 [notebooks/data_prep/create_omdb_posters_data.ipynb](../../notebooks/data_prep/create_omdb_posters_data.ipynb)
 in order. 
