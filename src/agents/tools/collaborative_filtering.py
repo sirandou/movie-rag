@@ -119,6 +119,7 @@ class CollaborativeFilteringTool:
                 all_keys = list(self.key_to_id.keys())
 
                 for title in titles:
+                    title = title.lower()
                     # Try exact match with year: "Inception (2010)"
                     if title in self.key_to_id:
                         available_ids.append(self.key_to_id[title])
@@ -141,16 +142,23 @@ class CollaborativeFilteringTool:
                     # Try Fuzzy match: partial or misspelled titles
                     matches = process.extract(title, all_keys, limit=3, score_cutoff=65)
 
-                    if len(matches) == 1 or (matches[0][1] - matches[1][1] > 10):
+                    if len(matches) == 1 or (
+                        len(matches) > 1 and matches[0][1] - matches[1][1] > 10
+                    ):
                         # Only one strong match or clear top match
                         best_match = matches[0][0]
                         available_ids.append(self.key_to_id[best_match])
                         continue
 
-                    options = [m[0] for m in matches]
-                    result["warnings"] += (
-                        f"Warning: Multiple close matches found for {title}, it might also not be available in dataset. Options: {options}. "
-                    )
+                    elif len(matches) > 1:
+                        options = [m[0] for m in matches]
+                        result["warnings"] += (
+                            f"Warning: Multiple close matches found for {title}, it might also not be available in dataset. Options: {options}. "
+                        )
+                        continue
+
+                    # No matches at all
+                    result["warnings"] += f"Warning: No matches found for '{title}'. "
 
                 if len(available_ids) < 1:
                     return json.dumps(

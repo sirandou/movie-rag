@@ -96,6 +96,7 @@ Follow the steps in [datasets/rotten-tomatoes-reviews/README.md](datasets/rotten
 export OPENAI_API_KEY="your-key-here"
 export OMDB_API_KEY="your-key-here"
 export POSTER_API_KEY="your-key-here"
+export TAVILY_API_KEY="your-key-here"
 
 # Optional (for LangSmith tracing)
 export LANGCHAIN_API_KEY="your-key-here"

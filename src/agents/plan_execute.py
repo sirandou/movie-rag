@@ -5,18 +5,16 @@ from langgraph.prebuilt import ToolNode
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.agents.base_movie_agent import MovieAgent
-from src.langchain.prompts import PLANNING_PROMPT
+from src.langchain.prompts import PLANNING_PROMPT, SYNTHESIZE_PROMPT
 
 
 class PlanExecuteState(TypedDict):
     """State for plan-execute agent."""
 
-    messages: Annotated[
-        list, add_messages
-    ]  # -> question, toolcall_plan[1], result of tool[1]
-    plan: List[str]  # -> list [1,2,3,4]
-    step_number: int  # -> 1
-    step_results: List[str]  # -> [result of tool[1]]
+    messages: Annotated[list, add_messages]
+    plan: List[str]
+    step_number: int
+    step_results: List[str]
 
 
 class PlanExecuteAgent(MovieAgent):
@@ -56,7 +54,7 @@ class PlanExecuteAgent(MovieAgent):
         workflow.add_edge(START, "planner")
         workflow.add_edge("planner", "executor")
 
-        # Routing from executor → either model to generate tool call, or steps are done → synthesizer
+        # Routing from executor → either model to generate tool call, or we're at synthesize step → synthesizer
         workflow.add_conditional_edges(
             "executor",
             self._should_continue_execution,
@@ -107,7 +105,7 @@ class PlanExecuteAgent(MovieAgent):
         plan = state["plan"]
         step_number = state["step_number"]
 
-        if step_number > len(plan):
+        if step_number >= len(plan):  # since last step is synthesizer
             return "synthesizer"
         else:
             return "model"
@@ -162,12 +160,9 @@ class PlanExecuteAgent(MovieAgent):
             ]
         )
 
-        synthesis_prompt = f"""Original question: {original_question}
-
-Results from execution:
-{results_text}
-
-Synthesize these results into a comprehensive answer to the original question:"""
+        synthesis_prompt = SYNTHESIZE_PROMPT.format(
+            original_question=original_question, results_text=results_text
+        )
 
         response = self.llm.invoke([HumanMessage(content=synthesis_prompt)])
 

@@ -23,9 +23,10 @@ class MovieAgent(ABC):
         reviews_csv_path: str,
         llm_model: str = "gpt-4o-mini",
         llm_temperature: float = 0.0,
+        web_search_enabled: bool = False,
     ) -> None:
         """
-        Agent with text, visual, sql, and search/recommendation tools.
+        Agent with text, visual, sql, search/recommendation, and web search tools.
         Args:
             - text_chain: MovieRAGChain instance
             - visual_retriever: VisualRetriever instance
@@ -33,6 +34,7 @@ class MovieAgent(ABC):
             - reviews_csv_path: path to reviews CSV for collaborative filtering tool
             - llm_model: language model name
             - llm_temperature: llm temperature
+            - web_search_enabled: enable web search tool
         """
         self.agent = None
 
@@ -58,6 +60,12 @@ class MovieAgent(ABC):
             sql_tool,
             item_based_cf_tool,
         ]
+
+        if web_search_enabled:
+            from src.agents.tools.web_search import WebSearchTool
+
+            web_search_tool = WebSearchTool(max_results=3).get_tool()
+            self.tools.append(web_search_tool)
 
         # Bind tools to LLM
         llm = ChatOpenAI(model=llm_model, temperature=llm_temperature)

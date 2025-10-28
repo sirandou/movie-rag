@@ -56,7 +56,6 @@ Examples:""",
     input_variables=["question", "context"],
 )  # just randomly trying user assistant instead of question answer
 
-
 # Streaming prompt with citations
 STREAM_PROMPT = PromptTemplate(
     input_variables=["context", "question"],
@@ -77,7 +76,6 @@ User question: {question}
 
 Answer with inline citations::""",
 )
-
 
 # HyDE prompt for hypothetical answer generation
 HYDE_PROMPT = PromptTemplate(
@@ -219,6 +217,11 @@ Available tools:
    It’s best used when you want recommendations based on movies the user liked.
    - Example: "I loved [X, Y] — what else might I like?", "Find movies similar to [X] based on ratings", "What movies have similar critic rating patterns to [X]?"
 
+6. search_web_for_movies
+   - Use for: searching for recent or obscure movie information not in the database.
+   ALWAYS use this tool for general movie questions where the answer is not in the documents instead of trying to guess or fabricate an answer.
+   - Example: "latest movies by [director]", "recent reviews of [movie]", "upcoming releases in [genre]", or queries where the movie is not in the database.
+
 User question: "{question}"
 
 Create a step-by-step plan to answer the question. Each step must:
@@ -235,4 +238,41 @@ Format:
 
 Now create a plan for the user's question.
 Plan:""",
+)
+
+# plan execute - synthesize prompt
+SYNTHESIZE_PROMPT = PromptTemplate(
+    input_variables=["original_question", "results_text"],
+    template="""Original question: {original_question}
+
+Results from execution:
+{results_text}
+
+Synthesize these results into a comprehensive answer to the original question:""",
+)
+
+# adaptive plan-execute replan decision prompt
+REPLAN_DECISION_PROMPT = PromptTemplate(
+    input_variables=["original_query", "current_plan_str", "completed_str"],
+    template="""Analyze this plan execution and decide if we should create a new plan or continue.
+
+ORIGINAL QUERY: {original_query}
+
+CURRENT PLAN:
+{current_plan_str}
+
+COMPLETED SUCCESSFULLY:
+{completed_str}
+
+IMPORTANT CONSIDERATIONS:
+Replan ONLY if the future steps rely on information that has not been retrieved based on the successfully completed steps.
+
+DECISION:
+Should we abandon this plan and create a new one, or continue with the remaining steps?
+
+Answer with EXACTLY one of these two words:
+- REPLAN (if we need a fundamentally different approach)
+- CONTINUE (if we can still achieve useful results)
+
+YOUR DECISION:""",
 )
