@@ -57,16 +57,16 @@ class AdaptivePlanExecuteAgent(MovieAgent):
        ↓
     planner
        ↓
-    executor
+    executor (step+=1)
        ↓
-    decide_replan
-    ├─ replanning_needed & replan_count < max → replanner → executor
+    decide_replan (ask LLM, prompt includes original plan + completed steps)
+    ├─ replanning_needed & replan_count < max → replanner (give failed context, only keep replan_count in new state) → executor
     ├─ step_number >= len(plan) → synthesizer → END
-    └─ otherwise → model → tools → evaluator
-                                    │
-                                    ├─ continue → updater → executor
-                                    ├─ retry → model
-                                    └─ fallback → model
+    └─ otherwise → model(retry/fallback aware) → tools → evaluator (based on keywords. Decides if retry-only once or fallback time. Adds failure history)
+                                                            │
+                                                            ├─ continue → updater (update step_result only if no failure; ie if fallback failed we skip) → executor
+                                                            ├─ retry → model
+                                                            └─ fallback → model
 
     """
 
@@ -146,10 +146,13 @@ class AdaptivePlanExecuteAgent(MovieAgent):
         # Create planning prompt, including failed steps if any
         failure_context = ""
         if failed_steps:
+            failure_context += "\n\nPrevious failed steps:\n" + "\n".join(
+                [f"- {fs['step']}: {fs['error']}" for fs in failed_steps]
+            )
             failure_context += (
-                "\n\nPrevious failed steps:\n"
-                + "\n".join([f"- {fs['step']}: {fs['error']}" for fs in failed_steps])
-                + "\nPlease create a new plan that avoids these issues."
+                "\n\nPrevious successful steps:\n"
+                + "\n".join([f"- {sr}" for sr in state.get("step_results", [])])
+                + "\n\nPlease create a new plan that avoids failed approaches and only if needed, acknowledges successful steps."
             )
 
         plan_prompt = PLANNING_PROMPT.format(question=question) + failure_context
@@ -198,6 +201,7 @@ class AdaptivePlanExecuteAgent(MovieAgent):
         """
         plan = state["plan"]
         step_results = state["step_results"]
+        step_number = state["step_number"]
         original_query = state["messages"][0].content if state["messages"] else ""
 
         # Build the decision prompt
@@ -212,10 +216,18 @@ class AdaptivePlanExecuteAgent(MovieAgent):
             if step_results
             else "None yet"
         )
+        current_step_str = plan[step_number - 1]
+        if len(state["failed_steps"]) > 0:
+            last_failure_str = f"{state['failed_steps'][-1]['step']}: {state['failed_steps'][-1]['error']}"
+        else:
+            last_failure_str = "None"
+
         prompt = REPLAN_DECISION_PROMPT.format(
             original_query=original_query,
             current_plan_str=current_plan_str,
             completed_str=completed_str,
+            current_step_str=current_step_str,
+            last_failure_str=last_failure_str,
         )
 
         try:
@@ -393,12 +405,14 @@ class AdaptivePlanExecuteAgent(MovieAgent):
         """Create a new plan based on failures."""
         print("\n Replanning based on encountered issues...")
 
-        # Keep successful results
-        replan_count = state["replan_count"]
-
         # Create new plan
         new_state = self._plan(state)
-        new_state["replan_count"] = replan_count
+
+        # Keep from last state
+        new_state["replan_count"] = state["replan_count"]
+        new_state["failed_steps"] = state["failed_steps"]
+        new_state["messages"] = state["messages"]
+        new_state["step_results"] = state["step_results"]
 
         return new_state
 

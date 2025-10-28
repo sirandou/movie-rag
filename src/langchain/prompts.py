@@ -253,7 +253,13 @@ Synthesize these results into a comprehensive answer to the original question:""
 
 # adaptive plan-execute replan decision prompt
 REPLAN_DECISION_PROMPT = PromptTemplate(
-    input_variables=["original_query", "current_plan_str", "completed_str"],
+    input_variables=[
+        "original_query",
+        "current_plan_str",
+        "completed_str",
+        "current_step_str",
+        "last_failure_str",
+    ],
     template="""Analyze this plan execution and decide if we should create a new plan or continue.
 
 ORIGINAL QUERY: {original_query}
@@ -263,6 +269,12 @@ CURRENT PLAN:
 
 COMPLETED SUCCESSFULLY:
 {completed_str}
+
+LAST FAILED STEP:
+{last_failure_str}
+
+NEXT STEP:
+{current_step_str}
 
 IMPORTANT CONSIDERATIONS:
 Replan ONLY if the future steps rely on information that has not been retrieved based on the successfully completed steps.
