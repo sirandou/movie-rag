@@ -1,19 +1,30 @@
+from langchain_core.prompts import PromptTemplate
 from langchain_tavily import TavilySearch
 from langchain.tools import tool
+from langchain_openai import ChatOpenAI
 
 
 class WebSearchTool:
-    def __init__(self, max_results: int = 3):
+    def __init__(
+        self,
+        max_results: int = 3,
+        llm_model: str = "gpt-4o-mini",
+        llm_temperature: float = 0.0,
+    ):
         """
         Web search for current movie information.
         Handles queries that need real-time data or information missing from the documents.
         Args:
             max_results: Maximum search results to return
+            llm_model: language model name
+            llm_temperature: llm temperature
         """
         self.max_results = max_results
+        self.llm = ChatOpenAI(model=llm_model, temperature=llm_temperature)
 
     def get_tool(self):
         max_results = self.max_results
+        llm = self.llm
 
         @tool
         def search_web_for_movies(query: str) -> str:
@@ -62,7 +73,24 @@ class WebSearchTool:
 
                     formatted.append(f"Result {i}: {title}\n{content}\nSource: {url}\n")
 
-                return "\n".join(formatted)
+                search_results = "\n".join(formatted)
+                prompt = PromptTemplate(
+                    template="""You are a summarizer. You are given:
+
+User question:
+{question}
+
+Web search results:
+{search_results}
+
+Task:
+Summarize the information from the search results in a clear, concise answer that directly addresses the user question. Do not include irrelevant details or speculate beyond the given information. Cite details only if they appear in the search results.
+""",
+                    input_variables=["question", "search_results"],
+                )
+                return llm.invoke(
+                    prompt.format(question=query, search_results=search_results)
+                ).content
 
             except Exception as e:
                 return f"Search error: {str(e)}"

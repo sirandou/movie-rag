@@ -64,7 +64,9 @@ class MovieAgent(ABC):
         if web_search_enabled:
             from src.agents.tools.web_search import WebSearchTool
 
-            web_search_tool = WebSearchTool(max_results=3).get_tool()
+            web_search_tool = WebSearchTool(
+                max_results=3, llm_model=llm_model, llm_temperature=llm_temperature
+            ).get_tool()
             self.tools.append(web_search_tool)
 
         # Bind tools to LLM

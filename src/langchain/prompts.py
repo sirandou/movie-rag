@@ -288,3 +288,25 @@ Answer with EXACTLY one of these two words:
 
 YOUR DECISION:""",
 )
+
+FALLBACK_EVALUATION_PROMPT = PromptTemplate(
+    input_variables=["original_question", "current_step", "fallback_result"],
+    template="""Analyze whether the search result satisfies an execution step.
+
+Original user query:
+{original_question}
+
+Current plan step:
+{current_step}
+
+Fallback web result:
+{fallback_result}
+
+Your task:
+1. Determine if the result correctly addresses the step.
+2. Evaluate the completeness and relevance.
+3. Provide a verdict: SUCCESS or FAIL.
+
+VERDICT:
+""",
+)

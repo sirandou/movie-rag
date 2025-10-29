@@ -10,11 +10,12 @@ from src.langchain.prompts import (
     PLANNING_PROMPT,
     REPLAN_DECISION_PROMPT,
     SYNTHESIZE_PROMPT,
+    FALLBACK_EVALUATION_PROMPT,
 )
 
 
-class AdaptivePlanExecuteState(TypedDict):
-    """State for plan-execute agent."""
+class AdaptHITLPlanExecState(TypedDict):
+    """State for human in the loop plan-execute agent."""
 
     messages: Annotated[list, add_messages]
     plan: List[str]
@@ -25,10 +26,12 @@ class AdaptivePlanExecuteState(TypedDict):
     failed_steps: List[Dict[str, Any]]
     fallback_used: bool
     replanning_needed: bool
+    human_interaction_count: int
+    human_choice: str
 
 
-class AdaptivePlanExecuteAgent(MovieAgent):
-    """Adaptive agent that can replan when steps fail.
+class AdaptHITLPlanExecAgent(MovieAgent):
+    """Adaptive agent that can replan when steps fail with human in the loop capabilities.
 
     START
        ↓
@@ -50,9 +53,10 @@ class AdaptivePlanExecuteAgent(MovieAgent):
     def _build_agent(self) -> None:
         self.max_tries_per_step = 2
         self.max_replanning_attempts = 2
+        self.max_human_interaction = 3
 
         """Build plan-execute graph."""
-        workflow = StateGraph(AdaptivePlanExecuteState)
+        workflow = StateGraph(AdaptHITLPlanExecState)
 
         # Add nodes
         workflow.add_node("planner", self._plan)
@@ -77,6 +81,10 @@ class AdaptivePlanExecuteAgent(MovieAgent):
             partial(self._update_results, max_tries_per_step=self.max_tries_per_step),
         )
         workflow.add_node("synthesizer", self._synthesize)
+        workflow.add_node(
+            "human",
+            partial(self._human, max_replanning_attempts=self.max_replanning_attempts),
+        )
 
         # Add edges
         workflow.add_edge(START, "planner")
@@ -99,21 +107,35 @@ class AdaptivePlanExecuteAgent(MovieAgent):
         workflow.add_conditional_edges(
             "evaluator",
             partial(
-                self._handle_step_result, max_tries_per_step=self.max_tries_per_step
+                self._handle_step_result,
+                max_tries_per_step=self.max_tries_per_step,
+                max_human_interaction=self.max_human_interaction,
             ),
             {
                 "continue": "updater",  # Success, continue
                 "retry": "model",  # Retry same step
                 "fallback": "model",  # Try with fallback
+                "human_intervention": "human",  # fallback failed, ask for human help
             },
         )
+        workflow.add_conditional_edges(
+            "human",
+            self._analyze_human,
+            {
+                "model": "model",  # model with modified step
+                "continue": "updater",  # continue/skip
+                "end": END,  # stop execution
+                "replan": "replanner",  # human asked for replanning
+            },
+        )
+
         workflow.add_edge("updater", "executor")
         workflow.add_edge("replanner", "executor")
         workflow.add_edge("synthesizer", END)
 
         self.agent = workflow.compile()
 
-    def _plan(self, state: AdaptivePlanExecuteState) -> Dict[str, Any]:
+    def _plan(self, state: AdaptHITLPlanExecState) -> Dict[str, Any]:
         """Create execution plan from user query."""
         question = state["messages"][0].content
         failed_steps = state.get("failed_steps", [])
@@ -153,7 +175,7 @@ class AdaptivePlanExecuteAgent(MovieAgent):
         for step in steps:
             print(f"  {step}")
 
-        # Reset state, except for failed steps
+        # Reset state
         return {
             "plan": steps,
             "step_number": 0,
@@ -163,14 +185,16 @@ class AdaptivePlanExecuteAgent(MovieAgent):
             "failed_steps": [],
             "fallback_used": False,
             "replanning_needed": False,
+            "human_interaction_count": 0,
+            "human_choice": "",
         }
 
-    def _execute_step(self, state: AdaptivePlanExecuteState) -> Dict[str, Any]:
+    def _execute_step(self, state: AdaptHITLPlanExecState) -> Dict[str, Any]:
         """Update the step number ahead of execution."""
         step_number = state["step_number"]
         return {"step_number": step_number + 1}
 
-    def _decide_replan(self, state: AdaptivePlanExecuteState) -> Dict[str, Any]:
+    def _decide_replan(self, state: AdaptHITLPlanExecState) -> Dict[str, Any]:
         """
         Ask LLM to analyze failures and decide if replanning is needed.
         """
@@ -231,7 +255,7 @@ class AdaptivePlanExecuteAgent(MovieAgent):
             return {"replanning_needed": False}
 
     def _should_continue_execution(
-        self, state: AdaptivePlanExecuteState, max_replanning_attempts: int
+        self, state: AdaptHITLPlanExecState, max_replanning_attempts: int
     ) -> str:
         plan = state["plan"]
         step_number = state["step_number"]
@@ -247,7 +271,7 @@ class AdaptivePlanExecuteAgent(MovieAgent):
             return "model"
 
     def _call_model(
-        self, state: AdaptivePlanExecuteState, max_tries_per_step: int
+        self, state: AdaptHITLPlanExecState, max_tries_per_step: int
     ) -> Dict[str, Any]:
         plan = state["plan"]
         step_number = state["step_number"]
@@ -300,38 +324,55 @@ class AdaptivePlanExecuteAgent(MovieAgent):
         return {"messages": [response]}
 
     def _evaluate_step_result(
-        self, state: AdaptivePlanExecuteState, max_tries_per_step: int
+        self, state: AdaptHITLPlanExecState, max_tries_per_step: int
     ) -> Dict[str, Any]:
         """Evaluate if step succeeded or failed."""
         retry_count = state.get("retry_count", 0)
         step_number = state["step_number"]
         plan = state["plan"]
+        content = str(state["messages"][-1].content)
 
-        # Detect failure patterns
-        failure_indicators = [
-            "not found",
-            "no results",
-            "error",
-            "failed",
-            "unable to",
-            "couldn't find",
-            "no matches",
-            "cannot provide",
-            "not include",
-            "not exist",
-            "no movies found",
-            "i don't have information",
-            "no data available",
-            "no information found",
-            "I'm sorry",
-            "unfortunately",
-        ]
-
-        content = str(state["messages"][-1].content).lower()
-        is_failure = any(indicator in content for indicator in failure_indicators)
+        # evaluate non-fallback and fallback differently
+        if not state["fallback_used"]:
+            failure_indicators = [
+                "not found",
+                "no results",
+                "error",
+                "failed",
+                "unable to",
+                "couldn't find",
+                "no matches",
+                "cannot provide",
+                "not include",
+                "not exist",
+                "no movies found",
+                "i don't have information",
+                "no data available",
+                "no information found",
+                "I'm sorry",
+                "unfortunately",
+            ]
+            is_failure = any(
+                indicator in content.lower() for indicator in failure_indicators
+            )
+        else:
+            prompt = FALLBACK_EVALUATION_PROMPT.format(
+                original_question=state["messages"][0].content,
+                current_step=plan[step_number - 1],
+                fallback_result=content,
+            )
+            response = self.llm.invoke(
+                [
+                    SystemMessage(
+                        content="You are a verifier that checks whether a search result satisfies an execution step."
+                    ),
+                    HumanMessage(content=prompt),
+                ]
+            )
+            is_failure = "FAIL" in response.content.strip().upper()
 
         if is_failure:
-            print(f" Step failed: {content[:100]}...")
+            print(f"\n\n Step failed: {content[:100]}...")
 
             # Record failure
             failed_step = {
@@ -353,11 +394,21 @@ class AdaptivePlanExecuteAgent(MovieAgent):
         return {"retry_count": 0, "fallback_used": False}
 
     def _handle_step_result(
-        self, state: AdaptivePlanExecuteState, max_tries_per_step: int
+        self,
+        state: AdaptHITLPlanExecState,
+        max_tries_per_step: int,
+        max_human_interaction: int,
     ) -> str:
-        # Either not failed, or has exceeded retries and fallback already used
-        if state["retry_count"] == 0 or state["retry_count"] > max_tries_per_step:
+        # not failed
+        if state["retry_count"] == 0:
             return "continue"
+
+        # if fallback has already been used and still failing, ask for human intervention if under limit, else continue
+        elif state["retry_count"] > max_tries_per_step:
+            if state["human_interaction_count"] < max_human_interaction:
+                return "human_intervention"
+            else:
+                return "continue"
 
         elif state["fallback_used"]:
             return "fallback"
@@ -365,8 +416,63 @@ class AdaptivePlanExecuteAgent(MovieAgent):
         else:
             return "retry"
 
+    def _human(
+        self, state: AdaptHITLPlanExecState, max_replanning_attempts: int
+    ) -> Dict[str, Any]:
+        updates = {"human_interaction_count": state["human_interaction_count"] + 1}
+
+        print("The step that failed with fallback:\n")
+        print(state["plan"][state["step_number"] - 1])
+        choice = input("1=Refine query, 2=Skip, 3=Replan, 4=Stop: ").strip()
+
+        if choice == "1":
+            new_query = input("How should we refine the query? ")
+            plan_mod = state["plan"]
+            plan_mod[state["step_number"] - 1] = new_query
+            updates = {
+                **updates,
+                "plan": plan_mod,
+                "human_choice": "model",
+                "retry_count": 0,
+                "fallback_used": False,
+            }
+            print("\n Continuing with refined step as requested.")
+            return updates
+
+        if choice == "2":
+            updates = {**updates, "human_choice": "continue"}
+            print("\n Continuing with next steps as requested.")
+            return updates
+
+        if choice == "3":
+            if state["replan_count"] < max_replanning_attempts:
+                updates = {
+                    **updates,
+                    "replanning_needed": True,
+                    "replan_count": state["replan_count"] + 1,
+                    "human_choice": "replan",
+                }
+                print("\n Replanning as requested.")
+                return updates
+            else:
+                updates = {**updates, "human_choice": "continue"}
+                print("\n max replanning attempts reached, continuing to next step.")
+                return updates
+
+        if choice == "4":
+            updates = {**updates, "human_choice": "end"}
+            print("\n ending execution as requested.")
+            return updates
+
+        updates = {**updates, "human_choice": "continue"}
+        print("\n choice not recognized, continuing to next step.")
+        return updates
+
+    def _analyze_human(self, state: AdaptHITLPlanExecState) -> str:
+        return state["human_choice"]
+
     def _update_results(
-        self, state: AdaptivePlanExecuteState, max_tries_per_step: int
+        self, state: AdaptHITLPlanExecState, max_tries_per_step: int
     ) -> Dict[str, Any]:
         """Update step results after successful execution."""
         step_results = state["step_results"]
@@ -376,7 +482,7 @@ class AdaptivePlanExecuteAgent(MovieAgent):
 
         return {"step_results": step_results, "retry_count": 0, "fallback_used": False}
 
-    def _replan(self, state: AdaptivePlanExecuteState) -> Dict[str, Any]:
+    def _replan(self, state: AdaptHITLPlanExecState) -> Dict[str, Any]:
         """Create a new plan based on failures."""
         print("\n Replanning based on encountered issues...")
 
@@ -391,7 +497,7 @@ class AdaptivePlanExecuteAgent(MovieAgent):
 
         return new_state
 
-    def _synthesize(self, state: AdaptivePlanExecuteState) -> Dict[str, Any]:
+    def _synthesize(self, state: AdaptHITLPlanExecState) -> Dict[str, Any]:
         """Synthesize all step results into final answer."""
         plan = state["plan"]
         step_results = state["step_results"]
@@ -443,6 +549,8 @@ class AdaptivePlanExecuteAgent(MovieAgent):
                 "failed_steps": [],
                 "fallback_used": False,
                 "replanning_needed": False,
+                "human_interaction_count": 0,
+                "human_choice": "",
             },
             {"recursion_limit": 50},
             stream_mode="values",  # Stream state values
