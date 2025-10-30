@@ -141,7 +141,20 @@ class PlanExecuteAgent(MovieAgent):
     def _update_results(self, state: PlanExecuteState) -> Dict[str, Any]:
         """Called after tool execution to update step results."""
         step_results = state["step_results"]
-        step_results.append(state["messages"][-1].content)
+        messages = state["messages"]
+
+        # Find the index of the last AI message (model response before tool calls)
+        last_ai_index = max(
+            (i for i, m in enumerate(messages) if m.type == "ai"), default=-1
+        )
+        # Gather ToolMessages that come AFTER that AI message (new tool outputs)
+        new_tool_messages = [
+            m.content
+            for i, m in enumerate(messages)
+            if m.type == "tool" and i > last_ai_index
+        ]
+
+        step_results.extend(new_tool_messages)
         return {"step_results": step_results}
 
     def _synthesize(self, state: PlanExecuteState) -> Dict[str, Any]:
@@ -154,14 +167,14 @@ class PlanExecuteAgent(MovieAgent):
 
         # Build synthesis prompt
         results_text = "\n\n".join(
-            [
-                f"Step {i + 1} ({plan[i]}): {result}"
-                for i, result in enumerate(step_results)
-            ]
+            [f"Step result: {result}" for result in step_results]
         )
+        plan_text = "\n".join([f"{i + 1}. {step}" for i, step in enumerate(plan)])
 
         synthesis_prompt = SYNTHESIZE_PROMPT.format(
-            original_question=original_question, results_text=results_text
+            original_question=original_question,
+            results_text=results_text,
+            plan_text=plan_text,
         )
 
         response = self.llm.invoke([HumanMessage(content=synthesis_prompt)])
@@ -186,7 +199,9 @@ class PlanExecuteAgent(MovieAgent):
         ):
             if verbose:
                 if len(chunk["messages"]) > msg_len:  # avoid duplicate prints
-                    chunk["messages"][-1].pretty_print()
+                    new_messages_num = len(chunk["messages"]) - msg_len
+                    for msg in chunk["messages"][-new_messages_num:]:
+                        msg.pretty_print()
                     msg_len = len(chunk["messages"])
 
             final_state = chunk

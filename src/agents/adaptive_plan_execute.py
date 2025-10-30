@@ -1,7 +1,7 @@
 from functools import partial
 from typing import TypedDict, Annotated, List, Dict, Any
 from langgraph.graph import StateGraph, END, START
-from langgraph.graph.message import add_messages
+from langgraph.graph.message import add_messages, Messages
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -13,6 +13,12 @@ from src.langchain.prompts import (
 )
 
 
+def _get_new_tool_messages(messages: List[Messages]) -> List[Messages]:
+    """Return list of ToolMessages generated after the last AI message."""
+    last_ai_idx = max((i for i, m in enumerate(messages) if m.type == "ai"), default=-1)
+    return [m for i, m in enumerate(messages) if m.type == "tool" and i > last_ai_idx]
+
+
 class AdaptivePlanExecuteState(TypedDict):
     """State for plan-execute agent."""
 
@@ -20,6 +26,7 @@ class AdaptivePlanExecuteState(TypedDict):
     plan: List[str]
     step_number: int
     step_results: List[str]
+    last_tools_results: Dict[str, list]
     retry_count: int
     replan_count: int
     failed_steps: List[Dict[str, Any]]
@@ -158,6 +165,7 @@ class AdaptivePlanExecuteAgent(MovieAgent):
             "plan": steps,
             "step_number": 0,
             "step_results": [],
+            "last_tools_results": {"successes": [], "failures": []},
             "retry_count": 0,
             "replan_count": 0,
             "failed_steps": [],
@@ -254,6 +262,7 @@ class AdaptivePlanExecuteAgent(MovieAgent):
         step_results = state["step_results"]
         retry_count = state.get("retry_count", 0)
         fallback_used = state.get("fallback_used", False)
+        last_failed_results = state["last_tools_results"]["failures"]
 
         # Get current step
         step = plan[step_number - 1]  # step_number is 1-indexed
@@ -265,27 +274,26 @@ class AdaptivePlanExecuteAgent(MovieAgent):
             print("  (Retry)")
 
         # Build context with previous results
-        context = "\n".join(
-            [f"Step {i + 1} result: {result}" for i, result in enumerate(step_results)]
-        )
+        context = "\n".join([f"Step result: {result}" for result in step_results])
 
         # Modify instructions based on retry/fallback status
         system_content = f"Original question: {state['messages'][0].content}\n" + (
-            f"Previous steps:\n{context}\n" if context else "First step.\n"
+            f"Previous successful steps results:\n{context}\n"
+            if context
+            else "First step.\n"
         )
 
         human_content = f"Execute this step: {step}"
 
         if fallback_used:
-            system_content += "Local data not found. Use search_web_for_movies tool to find information online.\n"
-            human_content = f" Previously decided step: {step}. IMPORTANT: This tool has failed, ONLY Use search_web_for_movies tool instead to execute."
+            system_content += "Local data not found or some tools have failed. Use search_web_for_movies tool instead of the failed tools to find information online.\n"
+            human_content = f" Previously decided step: {step}.\n Failed tools: {'; '.join([f'{f["name"]}: {f["content"]}' for f in last_failed_results])}.\nIMPORTANT: ONLY Use search_web_for_movies tool instead of the failed tools to execute."
         elif retry_count > 0:
-            last_err = None
-            if state.get("failed_steps"):
-                last = state["failed_steps"][-1]
-                last_err = last.get("error")
-            if last_err:
-                system_content += f"Previous attempt failed with error: {last_err}. Try a different approach or search query.\n"
+            last_errors = "; ".join(
+                [f"{f['name']}: {f['content']}" for f in last_failed_results]
+            )
+            if last_errors:
+                system_content += f"Previous attempt failed with error: {last_errors}. Try a different approach or search query.\n"
             else:
                 system_content += "Previous attempt failed. Try a different approach or search query.\n"
 
@@ -306,6 +314,7 @@ class AdaptivePlanExecuteAgent(MovieAgent):
         retry_count = state.get("retry_count", 0)
         step_number = state["step_number"]
         plan = state["plan"]
+        messages = state["messages"]
 
         # Detect failure patterns
         failure_indicators = [
@@ -327,16 +336,31 @@ class AdaptivePlanExecuteAgent(MovieAgent):
             "unfortunately",
         ]
 
-        content = str(state["messages"][-1].content).lower()
-        is_failure = any(indicator in content for indicator in failure_indicators)
+        new_tool_messages = _get_new_tool_messages(messages)
+
+        tool_failures = []
+        tool_successes = []
+        for m in new_tool_messages:
+            content_lower = str(m.content).lower()
+            if any(ind in content_lower for ind in failure_indicators):
+                tool_failures.append({"name": m.name, "content": m.content[:200]})
+            else:
+                tool_successes.append({"name": m.name, "content": m.content[:200]})
+
+        # failure if any tool has failed
+        is_failure = len(tool_failures) > 0
 
         if is_failure:
-            print(f" Step failed: {content[:100]}...")
+            print(
+                f" Step failed: {'; '.join([f'- {f["content"][:100]}...' for f in tool_failures])}"
+            )
 
             # Record failure
             failed_step = {
                 "step": plan[step_number - 1],
-                "error": f"{content[:200]}...",
+                "error": "; ".join(
+                    [f"{f['name']}: {f['content'][:200]}..." for f in tool_failures]
+                ),
                 "retry_count": retry_count,
             }
 
@@ -347,10 +371,21 @@ class AdaptivePlanExecuteAgent(MovieAgent):
             if updates["retry_count"] >= max_tries_per_step:
                 updates["fallback_used"] = True
 
+            updates["last_tools_results"] = {
+                "successes": tool_successes,
+                "failures": tool_failures,
+            }
             return updates
 
         # Success - reset retry count
-        return {"retry_count": 0, "fallback_used": False}
+        return {
+            "retry_count": 0,
+            "fallback_used": False,
+            "last_tools_results": {
+                "successes": tool_successes,
+                "failures": tool_failures,
+            },
+        }
 
     def _handle_step_result(
         self, state: AdaptivePlanExecuteState, max_tries_per_step: int
@@ -370,11 +405,19 @@ class AdaptivePlanExecuteAgent(MovieAgent):
     ) -> Dict[str, Any]:
         """Update step results after successful execution."""
         step_results = state["step_results"]
+        messages = state["messages"]
+        new_tool_messages = [m.content for m in _get_new_tool_messages(messages)]
+
         # Don't append if even fallback failed
         if state["retry_count"] <= max_tries_per_step:
-            step_results.append(str(state["messages"][-1].content))
+            step_results.extend(new_tool_messages)
 
-        return {"step_results": step_results, "retry_count": 0, "fallback_used": False}
+        return {
+            "step_results": step_results,
+            "retry_count": 0,
+            "fallback_used": False,
+            "last_tools_results": {"successes": [], "failures": []},
+        }
 
     def _replan(self, state: AdaptivePlanExecuteState) -> Dict[str, Any]:
         """Create a new plan based on failures."""
@@ -402,18 +445,19 @@ class AdaptivePlanExecuteAgent(MovieAgent):
 
         # Build synthesis prompt
         results_text = "\n\n".join(
-            [
-                f"Step {i + 1} ({plan[i]}): {result}"
-                for i, result in enumerate(step_results)
-            ]
+            [f"Step result: {result}" for result in step_results]
         )
         if failed_steps:
             results_text += "\n\nNote: Some steps could not be completed:\n"
             for failure in failed_steps[-3:]:  # Show last 3 failures
                 results_text += f"- {failure['step']}\n"
 
+        plan_text = "\n".join([f"{i + 1}. {step}" for i, step in enumerate(plan)])
+
         synthesis_prompt = SYNTHESIZE_PROMPT.format(
-            original_question=original_question, results_text=results_text
+            original_question=original_question,
+            results_text=results_text,
+            plan_text=plan_text,
         )
 
         if failed_steps:
@@ -438,6 +482,7 @@ class AdaptivePlanExecuteAgent(MovieAgent):
                 "plan": [],
                 "step_number": 0,
                 "step_results": [],
+                "last_tools_results": {"successes": [], "failures": []},
                 "retry_count": 0,
                 "replan_count": 0,
                 "failed_steps": [],
@@ -449,7 +494,9 @@ class AdaptivePlanExecuteAgent(MovieAgent):
         ):
             if verbose:
                 if len(chunk["messages"]) > msg_len:  # avoid duplicate prints
-                    chunk["messages"][-1].pretty_print()
+                    new_messages_num = len(chunk["messages"]) - msg_len
+                    for msg in chunk["messages"][-new_messages_num:]:
+                        msg.pretty_print()
                     msg_len = len(chunk["messages"])
 
             final_state = chunk

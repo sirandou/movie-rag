@@ -100,7 +100,7 @@ class EmbeddingModel:
         """Encode using OpenAI API."""
         # OpenAI has a limit of ~8k tokens per request and 2048 texts per batch
         # For simplicity, we'll batch by number of texts
-        max_batch_size = 1500
+        max_batch_size = 1200
         all_embeddings = []
 
         for i in range(0, len(texts), max_batch_size):

@@ -79,7 +79,9 @@ class ReactAgent(MovieAgent):
         ):
             if verbose:
                 if len(chunk["messages"]) > msg_len:  # avoid duplicate prints
-                    chunk["messages"][-1].pretty_print()
+                    new_messages_num = len(chunk["messages"]) - msg_len
+                    for msg in chunk["messages"][-new_messages_num:]:
+                        msg.pretty_print()
                     msg_len = len(chunk["messages"])
 
             final_state = chunk

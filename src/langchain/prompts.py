@@ -242,8 +242,11 @@ Plan:""",
 
 # plan execute - synthesize prompt
 SYNTHESIZE_PROMPT = PromptTemplate(
-    input_variables=["original_question", "results_text"],
+    input_variables=["original_question", "results_text", "plan_text"],
     template="""Original question: {original_question}
+    
+Latest plan:
+{plan_text}
 
 Results from execution:
 {results_text}
@@ -299,7 +302,7 @@ Original user query:
 Current plan step:
 {current_step}
 
-Fallback web result:
+Fallback result:
 {fallback_result}
 
 Your task:
