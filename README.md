@@ -38,10 +38,23 @@ A comprehensive RAG system for movie information, built with multi-modal data fr
 - Multimodal (text + image) search
 - SQL queries over structured metadata
 - Collaborative filtering recommendations (item-based, using critic rating patterns)
+- Web search for real-time movie information (Tavily)
 
 **Plan-Execute Agent** (LangGraph):
 - Multistep planning for complex queries
 - Executes planned steps using available tools
+
+**Adaptive Plan-Execute Agent** (LangGraph):
+- Automatic retry mechanism with configurable attempts per step
+- Web search fallback when local data is insufficient
+- LLM-based replanning when steps fail repeatedly
+- Failure tracking and context-aware plan regeneration
+
+**Human-in-the-Loop (HITL) Adaptive Agent** (LangGraph):
+- All features of Adaptive Plan-Execute Agent
+- Interactive intervention when automatic recovery fails
+- Options to refine queries, skip steps, accept results, replan, or stop
+- Configurable human interaction limits
 
 ## Quick Start
 
@@ -115,7 +128,7 @@ export LANGCHAIN_ENDPOINT="https://api.smith.langchain.com"
   - Document loaders, chunking, and retriever wrappers
   - RAG chains (text, multimodal) and advanced patterns (HyDE, Self-RAG, reranking)
   - Prompts, streaming, and evaluation (RAGAS)
-- **`src/agents/`**: ReAct and Plan-Execute agents with tools (RAG search, SQL, collaborative filtering)
+- **`src/agents/`**: ReAct, Plan-Execute, Adaptive Plan-Execute, and HITL Adaptive agents with tools (RAG search, SQL, collaborative filtering, web search)
 
 ## Usage
 

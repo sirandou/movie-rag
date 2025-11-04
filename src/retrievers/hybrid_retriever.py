@@ -117,7 +117,7 @@ class HybridRetriever(CustomBaseRetriever):
     def _search_hybrid(self, query: str, k: int) -> List[Tuple[dict, float]]:
         """
         Hybrid search combining dense and sparse results.
-        Uses Reciprocal Rank Fusion (RRF) to combine rankings.
+        Uses linear function to combine rankings.
         """
         # Get results from both retrievers
         dense_results = self.dense_retriever.search(query, k * 5)
