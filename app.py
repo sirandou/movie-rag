@@ -124,11 +124,15 @@ def _load_rag_components(
     plots_path: str,
     reviews_path: str,
     posters_csv_path: str,
+    max_text_movies: int,
+    max_poster_movies: int,
+    use_hyde: bool,
+    use_reranking: bool,
 ) -> tuple:
     """Build and cache the MovieRAGChain and VisualRetriever.
 
-    Cached for the lifetime of the Streamlit server process — only runs once
-    no matter how many reruns or users.
+    All parameters are part of the cache key — changing any of them triggers
+    a full rebuild.
     """
     from src.langchain.chains.movie_rag import MovieRAGChain
     from src.langchain.loaders import MoviePosterDocumentLoader
@@ -143,25 +147,31 @@ def _load_rag_components(
             alpha=0.8,
         )
         if Path(posters_csv_path).exists():
-            st.write("Encoding movie posters (this is the slow part)…")
+            st.write(f"Encoding movie posters (up to {max_poster_movies})…")
             loader = MoviePosterDocumentLoader(
                 posters_path=posters_csv_path,
-                max_movies=1000,
+                max_movies=max_poster_movies,
             )
             visual_retriever.add_documents(loader.load())
 
-        st.write("Building text RAG chain (embeddings + FAISS index)…")
+        features = []
+        if use_hyde:
+            features.append("HyDE")
+        if use_reranking:
+            features.append("reranking")
+        feature_str = f" with {', '.join(features)}" if features else ""
+        st.write(f"Building text RAG chain{feature_str} (up to {max_text_movies} movies)…")
         chain = MovieRAGChain(
             plots_path=plots_path,
             reviews_path=reviews_path,
-            max_movies=500,
+            max_movies=max_text_movies,
             use_custom_retriever=True,
             use_custom_chunk=True,
             custom_prompt=ZERO_SHOT_QA_PROMPT,
             k=5,
-            use_hyde=True,
+            use_hyde=use_hyde,
             hyde_model="gpt-4o-mini",
-            use_reranking=True,
+            use_reranking=use_reranking,
             reranker_cfg={"type": "llm"},
             initial_k=20,
         )
@@ -379,6 +389,24 @@ def main() -> None:
         )
         st.divider()
 
+        with st.expander("Indexing settings"):
+            st.caption(
+                "Changing these rebuilds the index from scratch. "
+                "Fewer movies = faster startup, lower coverage."
+            )
+            max_text_movies = st.slider(
+                "Max movies (text index)", 100, 8075, 500, step=100,
+                help="Number of movies loaded into the plots/reviews FAISS index.",
+            )
+            max_poster_movies = st.slider(
+                "Max movies (poster index)", 100, 6079, 1000, step=100,
+                help="Number of movie posters encoded by CLIP.",
+            )
+            use_hyde = st.toggle("HyDE query expansion", value=True,
+                                 help="Generates a hypothetical answer to improve retrieval.")
+            use_reranking = st.toggle("LLM reranking", value=True,
+                                      help="Re-ranks the top-20 candidates with an LLM before returning top-5.")
+
         with st.expander("Data paths"):
             plots_path = st.text_input("Plots CSV", DEFAULT_PLOTS_PATH)
             reviews_path = st.text_input("Reviews CSV", DEFAULT_REVIEWS_PATH)
@@ -406,7 +434,8 @@ def main() -> None:
     # Load cached RAG components
     try:
         text_chain, visual_retriever = _load_rag_components(
-            plots_path, reviews_path, posters_csv
+            plots_path, reviews_path, posters_csv,
+            max_text_movies, max_poster_movies, use_hyde, use_reranking,
         )
     except Exception as exc:
         st.error(f"Failed to load RAG components: {exc}")
