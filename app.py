@@ -16,6 +16,7 @@ import streamlit as st
 # ---------------------------------------------------------------------------
 
 _PREP_DIR = Path(__file__).parent / "datasets" / "rotten-tomatoes-reviews" / "prep"
+_DATA_ROOT = _PREP_DIR.parent  # .../datasets/rotten-tomatoes-reviews
 
 DEFAULT_PLOTS_PATH = str(_PREP_DIR / "movie_plots.csv")
 DEFAULT_REVIEWS_PATH = str(_PREP_DIR / "reviews_w_movies_full.csv")
@@ -102,15 +103,37 @@ def _init_session_state() -> None:
 # ---------------------------------------------------------------------------
 
 
+def _safe_data_path(path_str: str, expected_suffix: Optional[str] = None) -> Optional[Path]:
+    """Validate a user-supplied path is within _DATA_ROOT.
+
+    Returns the resolved Path if allowed, otherwise None.
+    """
+    if not path_str:
+        return None
+    try:
+        candidate = Path(path_str).expanduser().resolve()
+    except OSError:
+        return None
+    try:
+        candidate.relative_to(_DATA_ROOT)
+    except ValueError:
+        return None
+    if expected_suffix is not None and candidate.suffix.lower() != expected_suffix.lower():
+        return None
+    return candidate
+
+
 def _missing_files(plots: str, reviews: str, db: str) -> list:
     missing = []
-    for label, path in [
-        ("movie_plots.csv", plots),
-        ("reviews_w_movies_full.csv", reviews),
-        ("movies_meta.db", db),
+    for label, path_str, expected_suffix in [
+        ("movie_plots.csv", plots, ".csv"),
+        ("reviews_w_movies_full.csv", reviews, ".csv"),
+        ("movies_meta.db", db, ".db"),
     ]:
-        if not Path(path).exists():
-            missing.append(f"`{path}` — {label}")
+        safe_path = _safe_data_path(path_str, expected_suffix=expected_suffix)
+        if safe_path is None or not safe_path.exists():
+            reason = "path not allowed" if safe_path is None else "file missing"
+            missing.append(f"`{path_str}` — {label} ({reason})")
     return missing
 
 
