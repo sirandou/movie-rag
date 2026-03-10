@@ -127,7 +127,22 @@ def _load_rag_components(
 ) -> tuple:
     """Build and cache the MovieRAGChain and VisualRetriever."""
     from src.langchain.chains.movie_rag import MovieRAGChain
+    from src.langchain.loaders import MoviePosterDocumentLoader
+    from src.langchain.prompts import ZERO_SHOT_QA_PROMPT
     from src.retrievers.visual_retriever import VisualRetriever
+
+    # Load poster docs first (mirrors notebook order)
+    visual_retriever = VisualRetriever(
+        model_name="ViT-B/32",
+        use_text_fusion=True,
+        alpha=0.8,
+    )
+    if Path(posters_csv_path).exists():
+        loader = MoviePosterDocumentLoader(
+            posters_path=posters_csv_path,
+            max_movies=1000,
+        )
+        visual_retriever.add_documents(loader.load())
 
     chain = MovieRAGChain(
         plots_path=plots_path,
@@ -135,23 +150,15 @@ def _load_rag_components(
         max_movies=500,
         use_custom_retriever=True,
         use_custom_chunk=True,
+        custom_prompt=ZERO_SHOT_QA_PROMPT,
         k=5,
+        use_hyde=True,
+        hyde_model="gpt-4o-mini",
+        use_reranking=True,
+        reranker_cfg={"type": "llm"},
+        initial_k=20,
     )
     chain.build()
-
-    visual_retriever = VisualRetriever(
-        model_name="ViT-B/32",
-        use_text_fusion=True,
-        alpha=0.8,
-    )
-    if Path(posters_csv_path).exists():
-        from src.langchain.loaders import MoviePosterDocumentLoader
-
-        loader = MoviePosterDocumentLoader(
-            posters_path=posters_csv_path,
-            max_movies=500,
-        )
-        visual_retriever.add_documents(loader.load())
 
     return chain, visual_retriever
 
