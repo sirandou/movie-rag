@@ -119,46 +119,55 @@ def _missing_files(plots: str, reviews: str, db: str) -> list:
 # ---------------------------------------------------------------------------
 
 
-@st.cache_resource(show_spinner="Loading RAG components — this may take a minute…")
+@st.cache_resource(show_spinner=False)
 def _load_rag_components(
     plots_path: str,
     reviews_path: str,
     posters_csv_path: str,
 ) -> tuple:
-    """Build and cache the MovieRAGChain and VisualRetriever."""
+    """Build and cache the MovieRAGChain and VisualRetriever.
+
+    Cached for the lifetime of the Streamlit server process — only runs once
+    no matter how many reruns or users.
+    """
     from src.langchain.chains.movie_rag import MovieRAGChain
     from src.langchain.loaders import MoviePosterDocumentLoader
     from src.langchain.prompts import ZERO_SHOT_QA_PROMPT
     from src.retrievers.visual_retriever import VisualRetriever
 
-    # Load poster docs first (mirrors notebook order)
-    visual_retriever = VisualRetriever(
-        model_name="ViT-B/32",
-        use_text_fusion=True,
-        alpha=0.8,
-    )
-    if Path(posters_csv_path).exists():
-        loader = MoviePosterDocumentLoader(
-            posters_path=posters_csv_path,
-            max_movies=1000,
+    with st.status("Loading RAG components (one-time setup)…", expanded=True) as status:
+        st.write("Initialising CLIP visual retriever…")
+        visual_retriever = VisualRetriever(
+            model_name="ViT-B/32",
+            use_text_fusion=True,
+            alpha=0.8,
         )
-        visual_retriever.add_documents(loader.load())
+        if Path(posters_csv_path).exists():
+            st.write("Encoding movie posters (this is the slow part)…")
+            loader = MoviePosterDocumentLoader(
+                posters_path=posters_csv_path,
+                max_movies=1000,
+            )
+            visual_retriever.add_documents(loader.load())
 
-    chain = MovieRAGChain(
-        plots_path=plots_path,
-        reviews_path=reviews_path,
-        max_movies=500,
-        use_custom_retriever=True,
-        use_custom_chunk=True,
-        custom_prompt=ZERO_SHOT_QA_PROMPT,
-        k=5,
-        use_hyde=True,
-        hyde_model="gpt-4o-mini",
-        use_reranking=True,
-        reranker_cfg={"type": "llm"},
-        initial_k=20,
-    )
-    chain.build()
+        st.write("Building text RAG chain (embeddings + FAISS index)…")
+        chain = MovieRAGChain(
+            plots_path=plots_path,
+            reviews_path=reviews_path,
+            max_movies=500,
+            use_custom_retriever=True,
+            use_custom_chunk=True,
+            custom_prompt=ZERO_SHOT_QA_PROMPT,
+            k=5,
+            use_hyde=True,
+            hyde_model="gpt-4o-mini",
+            use_reranking=True,
+            reranker_cfg={"type": "llm"},
+            initial_k=20,
+        )
+        chain.build()
+
+        status.update(label="RAG components ready!", state="complete", expanded=False)
 
     return chain, visual_retriever
 
