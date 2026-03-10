@@ -56,6 +56,17 @@ A comprehensive RAG system for movie information, built with multi-modal data fr
 - Options to refine queries, skip steps, accept results, replan, or stop
 - Configurable human interaction limits
 
+### 5. Streamlit UI
+
+A chat interface for interacting with all four agents without writing code.
+
+**Features:**
+- **Agent selection**: ReAct, Plan-Execute, Adaptive Plan-Execute, or HITL Adaptive
+- **LLM settings**: Model choice (`gpt-4o-mini`, `gpt-4o`, `gpt-4-turbo`), temperature slider
+- **Indexing settings**: Control how many movies are loaded into text/poster indexes; toggle HyDE query expansion and LLM reranking
+- **Web search toggle**: Enable Tavily web search (requires `TAVILY_API_KEY`)
+- **Human-in-the-loop panel**: When using the HITL Adaptive agent, the UI prompts you to refine queries, skip steps, replan, or stop
+
 ## Quick Start
 
 ### Installation
@@ -91,6 +102,16 @@ A comprehensive RAG system for movie information, built with multi-modal data fr
    # Full installation (all dependencies including RAG components)
    make install-all
    ```
+
+### Running the Streamlit UI
+
+After completing installation and dataset setup (see below), launch the app:
+
+```bash
+streamlit run app.py
+```
+
+The app will show setup instructions automatically if required data files are missing.
 
 ### Configure Notebook Paths
 
