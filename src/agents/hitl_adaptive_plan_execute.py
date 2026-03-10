@@ -40,6 +40,18 @@ class AdaptHITLPlanExecState(TypedDict):
 class AdaptHITLPlanExecAgent(MovieAgent):
     """Adaptive agent that can replan when steps fail with human in the loop capabilities.
 
+    The optional ``human_input_fn`` constructor argument lets callers replace the
+    blocking ``input()`` calls with a custom callback (e.g. a Streamlit widget).
+    The callback signature is::
+
+        def human_input_fn(prompt: str, context: dict) -> dict:
+            # context keys: step, plan, step_text, result
+            # return keys:  choice (str "1"-"5"), refined_query (str)
+            ...
+
+    When ``human_input_fn`` is *None* (default) the original terminal ``input()``
+    behaviour is preserved.
+
     START
        ↓
     planner
@@ -62,6 +74,10 @@ class AdaptHITLPlanExecAgent(MovieAgent):
                                                                                                                         ├─ replanner → executor
                                                                                                                         └─ END
     """
+
+    def __init__(self, *args, human_input_fn=None, **kwargs) -> None:
+        self.human_input_fn = human_input_fn
+        super().__init__(*args, **kwargs)
 
     def _build_agent(self) -> None:
         self.max_tries_per_step = 2
@@ -476,12 +492,30 @@ class AdaptHITLPlanExecAgent(MovieAgent):
             )
         )
         print("\n")
-        choice = input(
-            "1=Refine query, 2=Skip step, 3=Continue with this result, 4=Replan, 5=Stop: "
-        ).strip()
+        if self.human_input_fn:
+            _resp = self.human_input_fn(
+                prompt="1=Refine query, 2=Skip step, 3=Continue with this result, 4=Replan, 5=Stop",
+                context={
+                    "step": state["step_number"],
+                    "plan": state["plan"],
+                    "step_text": state["plan"][state["step_number"] - 1],
+                    "result": state["messages"][-1].content if state["messages"] else "",
+                },
+            )
+            choice = _resp.get("choice", "3")
+            _prefilled_query = _resp.get("refined_query", "")
+        else:
+            choice = input(
+                "1=Refine query, 2=Skip step, 3=Continue with this result, 4=Replan, 5=Stop: "
+            ).strip()
+            _prefilled_query = ""
 
         if choice == "1":
-            new_query = input("How should we refine the query? ")
+            new_query = (
+                _prefilled_query
+                if self.human_input_fn
+                else input("How should we refine the query? ")
+            )
             plan_mod = state["plan"]
             plan_mod[state["step_number"] - 1] = new_query
             updates = {
