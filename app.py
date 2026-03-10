@@ -435,6 +435,12 @@ def main() -> None:
             reviews_path = st.text_input("Reviews CSV", DEFAULT_REVIEWS_PATH)
             db_path = st.text_input("SQLite DB", DEFAULT_DB_PATH)
             posters_csv = st.text_input("Posters CSV", DEFAULT_POSTERS_CSV_PATH)
+            _safe_posters = _safe_data_path(posters_csv, expected_suffix=".csv")
+            if _safe_posters is None:
+                st.error("Invalid posters CSV path: must be a .csv file inside the dataset directory.")
+                safe_posters_csv = DEFAULT_POSTERS_CSV_PATH
+            else:
+                safe_posters_csv = str(_safe_posters)
 
         st.divider()
         if st.button("Clear chat", use_container_width=True):
@@ -457,7 +463,7 @@ def main() -> None:
     # Load cached RAG components
     try:
         text_chain, visual_retriever = _load_rag_components(
-            plots_path, reviews_path, posters_csv,
+            plots_path, reviews_path, safe_posters_csv,
             max_text_movies, max_poster_movies, use_hyde, use_reranking,
         )
     except Exception as exc:
