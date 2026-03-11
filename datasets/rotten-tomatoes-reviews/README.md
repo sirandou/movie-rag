@@ -8,7 +8,7 @@ Dataset in the [prep](prep) folder is created by running notebook scripts [noteb
 [notebooks/data_prep/create_omdb_plots_data.ipynb](../../notebooks/data_prep/create_omdb_plots_data.ipynb), 
 [notebooks/data_prep/create_omdb_posters_data.ipynb](../../notebooks/data_prep/create_omdb_posters_data.ipynb)
 in order. 
-SQLite database is created by running [src/data/sqlite_database.py](../../src/data/sqlite_database.py).
+SQLite database is created by running [notebooks/data_prep/create_sqlite.ipynb](../../notebooks/data_prep/create_sqlite.ipynb), which uses [src/data/sqlite_database.py](../../src/data/sqlite_database.py).
 
 The final processed data files are:
 - `reviews_w_movies_full.csv`: Contains reviews along with movie metadata from both rotten tomatoes 
