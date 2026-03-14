@@ -58,6 +58,16 @@ A comprehensive RAG system for movie information, built with multi-modal data fr
 
 ## Quick Start
 
+### Streamlit App
+
+Run the interactive web UI to query agents through a browser:
+
+```bash
+streamlit run app.py
+```
+
+Configure dataset paths, agent type, and settings from the sidebar, then initialize the pipeline before submitting queries.
+
 ### Installation
 
 1. Clone the repository:

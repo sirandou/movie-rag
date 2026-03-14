@@ -476,12 +476,15 @@ class AdaptHITLPlanExecAgent(MovieAgent):
             )
         )
         print("\n")
-        choice = input(
-            "1=Refine query, 2=Skip step, 3=Continue with this result, 4=Replan, 5=Stop: "
+        raw = input(
+            "1=Refine query (format: 1|new query text), 2=Skip step, "
+            "3=Continue with this result, 4=Replan, 5=Stop: "
         ).strip()
 
-        if choice == "1":
-            new_query = input("How should we refine the query? ")
+        if raw.startswith("1"):
+            parts = raw.split("|", 1)
+            choice = "1"
+            new_query = parts[1].strip() if len(parts) > 1 else ""
             plan_mod = state["plan"]
             plan_mod[state["step_number"] - 1] = new_query
             updates = {
@@ -494,6 +497,8 @@ class AdaptHITLPlanExecAgent(MovieAgent):
             }
             print("\n Continuing with refined step as requested.")
             return updates
+        else:
+            choice = raw
 
         if choice == "2":
             updates = {**updates, "human_choice": "continue"}

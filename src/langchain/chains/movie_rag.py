@@ -278,7 +278,9 @@ class MovieRAGChain(BaseChain):
 
         # Feature 2: Reranking (applied last - post-processes results)
         if self.use_reranking:
-            print(f"\n{step}. Adding reranking: {self.base_retriever_k} → {self.k} docs...")
+            print(
+                f"\n{step}. Adding reranking: {self.base_retriever_k} → {self.k} docs..."
+            )
             retriever = self._add_reranking(retriever, self.k)
             step += 1
 
