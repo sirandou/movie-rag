@@ -1,0 +1,25 @@
+- What movies are about dreams?
+- What movies are similar to Inception?
+- What makes Christopher Nolan's films special?
+- Can you guide me to spiritual cinema?
+- What makes Christopher Nolan's directing style unique?
+- Recommend sci-fi movies with time travel themes
+- Movies with twist endings?
+- Compare Tarantino and Scorsese's directing styles
+- Recommend coming of age movies about love, poverty, and friendships growing apart
+- What is a funny romantic movie set in Europe?
+- What cartoon is about family and has bright visuals?
+- What are the top rated romantic movies made after 2010?
+- What is the Matrix about?
+- What themes does Titanic touch?
+- What movie should I watch tonight if I really enjoyed watching Star Wars and Harry Potter? Kung Fu Panda was kinda fun too
+- What's the highest grossing movie of 2025?
+- What is Inception about?
+- Compare Wes Anderson's films to other colorful comedies. What defines his visual style and how do their audience ratings differ?
+- Between Christopher Nolan and Denis Villeneuve, whose recent sci-fi films are rated higher, and what themes do they share?
+- When is Severance new season going to be released?
+- What is one of the best rated movies of 2025? Find the main actor/actress's name. See what type of movies they have acted in, and what other movies you might like if you're a fan of this actor's movies.
+- What is the ending of Inception?
+- What is one of the most well received horror movies of 2025 in terms of IMDb? Find the main actor/actress's name. See what type of movies they have acted in, and what other movies you might like if you're a fan of this actor's movies.
+- I love Normal People. Can you tell me who the main actor was and what type of movies he's acted in? If I like that movie what else might I be interested in?
+- I love the movie where the girl was sick. What was the name? I remember the actress was blonde and passed away in the end.
