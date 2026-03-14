@@ -73,6 +73,7 @@ def make_hitl_interceptor(
     the user responds. Because the agent now encodes choice + refinement text
     in a single input() call, this is always exactly one block-and-return.
     """
+
     def hitl_input(prompt: str = "") -> str:
         signal_q.put(("hitl_waiting", prompt))
         event.clear()
@@ -162,7 +163,9 @@ def respond_hitl(choice: str, refinement: str = ""):
 
 def show_hitl_ui():
     """Render the human-intervention panel when the agent is waiting for input."""
-    st.warning("⚠️ Human intervention required — the agent needs your guidance to continue.")
+    st.warning(
+        "⚠️ Human intervention required — the agent needs your guidance to continue."
+    )
 
     with st.expander("Execution trace so far", expanded=True):
         if st.session_state.accumulated_trace:
@@ -183,7 +186,9 @@ def show_hitl_ui():
     with col1:
         if st.button("1 — Refine query", use_container_width=True, type="primary"):
             if not refinement_text.strip():
-                st.warning("Enter a refinement query above before choosing this option.")
+                st.warning(
+                    "Enter a refinement query above before choosing this option."
+                )
             else:
                 respond_hitl("1", refinement_text.strip())
     with col2:
@@ -289,7 +294,7 @@ def build_pipeline(cfg: dict):
             use_hyde=True,
             hyde_model="gpt-4o-mini",
             use_reranking=True,
-            reranker_cfg={'type': 'llm'},
+            reranker_cfg={"type": "llm"},
             embed_model="text-embedding-3-small",
             llm_model="gpt-4o-mini",
         )
