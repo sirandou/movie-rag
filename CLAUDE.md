@@ -4,56 +4,78 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Python 3.12 ML project using Poetry for dependency management. The project is configured for machine learning development with multi-component architecture supporting ML, RAG, and deployment components.
+Movie RAG is a Retrieval-Augmented Generation system for movie information built with Python 3.12, Poetry, LangChain, and LangGraph. It supports multimodal queries (text + poster images), multiple retrieval strategies, and a hierarchy of agents with increasing autonomy.
 
 ## Development Commands
 
-### Installation and Setup
+### Installation
 - `make install` - Install base dependencies
-- `make install-ml` - Install with ML dependencies (torch, lightning, wandb)
-- `make install-dev` - Install with development and ML dependencies
-- `make setup-hooks` - Setup pre-commit hooks
+- `make install-dev` - Install with dev tools (ruff, black, mypy, pytest)
+- `make install-all` - Install all dependency groups (base + ml + dev + rag-agent)
+- Dependencies are grouped in pyproject.toml: `base`, `ml`, `dev`, `rag-agent`; add new deps with `poetry add --group <group>`
 
 ### Testing and Quality
 - `make test` or `pytest` - Run all tests
-- `pytest path/to/test_file.py` - Run specific test file
-- `pytest path/to/test_file.py::test_function` - Run specific test
-- `make format` - Run Black formatter, flake8 linter, and mypy type checker
+- `pytest path/to/test_file.py::test_function` - Run a single test
+- `make format` - Run ruff format + check (not Black/flake8 — the Makefile uses ruff)
 
 ### Development Environment
-- `make jupyter` or `jupyter lab` - Start Jupyter Lab
-- `make clean` - Clean cache and temporary files
+- `make jupyter` - Start Jupyter Lab
+- `make clean` - Clean cache and temp files
 
-## Code Standards
+## Architecture
 
-### Dependency Management
-- Use `poetry add` for new dependencies, not `pip install`
-- Separate dependencies into appropriate groups (dev, ml) in pyproject.toml
+### Data Layer (`src/data/`)
+- `sqlite_database.py` — SQLite DB with 8,000+ movies; indexed on ratings, genres, directors, actors, years
+- `document_creators.py` — Converts CSV files (Rotten Tomatoes reviews, OMDB plots) into LangChain `Document` objects
+- `chunk.py` — Custom sentence-level chunking logic
 
-### Code Quality Requirements
-- Black formatter with 88-character line length
-- Type hints required (mypy configured for Python 3.12)
-- Use pathlib for file operations
-- Structured logging over print statements
-- Write docstrings for functions and classes
-- Include error handling in production code
+### Retriever Layer (`src/retrievers/`)
+All retrievers inherit from `CustomBaseRetriever` (`base.py`) and share the interface: `add_documents`, `search`, `save`, `load`.
+- **Dense** (`dense_retriever.py`): FAISS + Sentence-Transformers or OpenAI embeddings
+- **Sparse** (`sparse_retriever.py`): BM25 keyword search
+- **Hybrid** (`hybrid_retriever.py`): Weighted combination of dense + sparse (configurable `alpha`)
+- **Visual** (`visual_retriever.py`): CLIP (ViT-B/32) embeddings on movie posters; fuses image + text via concatenation or weighted average
+- `factory.py` — `create_text_retriever()` instantiates any retriever from a config dict
 
-### Project Structure
-- Source code in `src/` directory
-- Tests should be created in `tests/` directory (currently empty)
-- Configuration managed through pyproject.toml and Makefile
+### RAG Chain Layer (`src/langchain/`)
+- `chains/movie_rag.py` — `MovieRAGChain`: main pipeline (load docs → chunk → build retriever → optional HyDE/reranking → QA chain)
+- `retrieval/hyde.py` — HyDE retriever: LLM generates a hypothetical answer, then searches with that
+- `retrieval/reranker.py` — Cross-encoder reranking (Cohere or sentence-transformers)
+- `retrieval/retrievers.py` — `TextRetrieverWrapper`: bridges custom retrievers into LangChain's retriever interface
+- `chains/self_rag.py` — Self-RAG variant with self-critique loop
+- `chains/multimodal.py` — Full multimodal chain combining text + visual retrievers
+- `chains/streaming.py` — Streaming response support
+- `prompts.py` — All system prompts (QA, planning, synthesis, reranking)
+- `observability.py` — LangSmith tracing setup
+- `ragas.py` — RAGAS evaluation metrics
 
-## Environment Options
+### Agent Layer (`src/agents/`)
+Four agent types with escalating capability, all built on LangGraph state machines:
 
-The project supports both Poetry and Conda environments:
-- Poetry: Primary dependency management (pyproject.toml)
-- Conda: Alternative setup via environment.yml
+| Agent | File | Use case |
+|---|---|---|
+| ReAct | `react.py` | Simple queries; reason-act-observe loop |
+| Plan-Execute | `plan_execute.py` | Multi-step queries; plans then executes sequentially |
+| Adaptive Plan-Execute | `adaptive_plan_execute.py` | Auto-retries failures, falls back to web search, replans via LLM |
+| HITL Adaptive | `hitl_adaptive_plan_execute.py` | All adaptive features + interactive human intervention when stuck |
 
-## ML Dependencies
+All agents inherit from `base_movie_agent.py` (`MovieAgent`) and compose the same tool set:
+- **Text RAG** — searches plots + reviews
+- **Visual RAG** — CLIP poster search
+- **Combined RAG** — text + visual fusion
+- **SQL** (`tools/sql_tool.py`) — LLM-generated SQL on the metadata DB (ratings, counts, filters)
+- **Collaborative Filtering** (`tools/collaborative_filtering.py`) — item-based CF via critic rating cosine similarity
+- **Web Search** (`tools/web_search.py`) — Tavily API; used as fallback in adaptive agents
 
-Core ML stack includes:
-- Data: numpy, pandas, scipy
-- ML: scikit-learn, torch, pytorch-lightning
-- Visualization: matplotlib, seaborn
-- Experiment tracking: wandb
-- Notebooks: jupyter, ipykernel
+### Notebooks (`notebooks/`)
+Numbered 1–12 showing progressive feature development: embeddings → chunking → text retrieval → BM25 → visual retrieval → LangChain RAG → reranking → HyDE/streaming/LangSmith → self-RAG/RAGAS → multimodal chain → ReAct agent → plan-execute agent. `notebooks/data_prep/` contains one-time data preparation scripts.
+
+## Required Environment Variables
+```
+OPENAI_API_KEY       # Embeddings + LLM
+OMDB_API_KEY         # Plot and poster data
+TAVILY_API_KEY       # Web search fallback (adaptive agents)
+LANGCHAIN_API_KEY    # Optional: LangSmith tracing
+LANGCHAIN_TRACING_V2 # Optional: enable LangSmith
+```

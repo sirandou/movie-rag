@@ -109,10 +109,11 @@ class MovieRAGChain(BaseChain):
 
         self.use_reranking = use_reranking
         self.reranker_cfg = reranker_cfg
-        self.initial_k = initial_k
         self.use_hyde = use_hyde
         self.hyde_model = hyde_model
         self.hyde_prompt = hyde_prompt
+
+        self.base_retriever_k = initial_k if self.use_reranking else self.k
 
         print("✓ MovieRAGChain initialized")
         print(
@@ -202,11 +203,10 @@ class MovieRAGChain(BaseChain):
             None
         """
         print("\nBuilding base retriever...")
-        retriever_k = self.initial_k if self.use_reranking else self.k
         if self.use_custom_retriever:
-            return self._build_custom_retriever(chunks, k=retriever_k)
+            return self._build_custom_retriever(chunks, k=self.base_retriever_k)
         else:
-            return self._build_langchain_retriever(chunks, k=retriever_k)
+            return self._build_langchain_retriever(chunks, k=self.base_retriever_k)
 
     def _build_langchain_retriever(
         self, chunks: List[Document], k: int
@@ -246,7 +246,7 @@ class MovieRAGChain(BaseChain):
         if self.llm is None or self.retriever is None:
             raise ValueError("LLM and retriever must be set before creating QA chain.")
 
-        print("\n5. Creating QA chain...")
+        print("\n Creating QA chain...")
         chain_type_kwargs: dict = {}
         if self.custom_prompt is not None:
             chain_type_kwargs["prompt"] = self.custom_prompt
@@ -264,7 +264,8 @@ class MovieRAGChain(BaseChain):
     def _apply_retrieval_features(self, base_retriever: BaseRetriever) -> BaseRetriever:
         """
         Apply retrieval features in order:
-        1. Reranking (if enabled)
+        1. HyDE (if enabled)
+        2. Reranking (if enabled)
         """
         retriever = base_retriever
         step = 4
@@ -277,7 +278,7 @@ class MovieRAGChain(BaseChain):
 
         # Feature 2: Reranking (applied last - post-processes results)
         if self.use_reranking:
-            print(f"\n{step}. Adding reranking: {self.initial_k} → {self.k} docs...")
+            print(f"\n{step}. Adding reranking: {self.base_retriever_k} → {self.k} docs...")
             retriever = self._add_reranking(retriever, self.k)
             step += 1
 
@@ -289,6 +290,7 @@ class MovieRAGChain(BaseChain):
             base_retriever=base_retriever,
             llm_model=self.hyde_model,
             hyde_prompt=self.hyde_prompt,
+            k=self.base_retriever_k,
         )
 
     def _add_reranking(
