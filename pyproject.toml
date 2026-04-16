@@ -69,6 +69,10 @@ build-backend = "poetry.core.masonry.api"
 line-length = 88
 target-version = ["py312"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true
