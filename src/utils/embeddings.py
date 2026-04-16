@@ -98,18 +98,34 @@ class EmbeddingModel:
 
     def _encode_openai(self, texts: List[str]) -> np.ndarray:
         """Encode using OpenAI API."""
-        # OpenAI has a limit of ~8k tokens per request and 2048 texts per batch
-        # For simplicity, we'll batch by number of texts
-        max_batch_size = 1200
+        # OpenAI limits: 300k tokens per request, 2048 texts per batch.
+        # Batch by estimated token count (chars / 4) to avoid exceeding the limit.
+        max_tokens_per_batch = 250_000  # conservative headroom below 300k
+        max_texts_per_batch = 2048
         all_embeddings = []
 
-        for i in range(0, len(texts), max_batch_size):
-            batch = texts[i : i + max_batch_size]
-            response = self.client.embeddings.create(input=batch, model=self.model_name)
+        batch: List[str] = []
+        batch_token_estimate = 0
 
-            batch_embeddings = [item.embedding for item in response.data]
-            all_embeddings.extend(batch_embeddings)
+        def flush(b: List[str]) -> List[List[float]]:
+            response = self.client.embeddings.create(input=b, model=self.model_name)
             time.sleep(0.1)
+            return [item.embedding for item in response.data]
+
+        for text in texts:
+            token_estimate = max(1, len(text) // 4)
+            if batch and (
+                batch_token_estimate + token_estimate > max_tokens_per_batch
+                or len(batch) >= max_texts_per_batch
+            ):
+                all_embeddings.extend(flush(batch))
+                batch = []
+                batch_token_estimate = 0
+            batch.append(text)
+            batch_token_estimate += token_estimate
+
+        if batch:
+            all_embeddings.extend(flush(batch))
 
         return np.array(all_embeddings, dtype="float32")
 
