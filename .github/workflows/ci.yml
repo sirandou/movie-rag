@@ -31,7 +31,16 @@ jobs:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
 
+      - name: Pin setuptools for legacy CLIP build
+        # openai/CLIP's setup.py imports pkg_resources, which setuptools 81+
+        # no longer exposes in PEP-517 build-isolation environments. Pinning
+        # setuptools < 81 via pip constraint lets the isolated build env
+        # satisfy the import without affecting the runtime venv.
+        run: echo "setuptools<81" > ${{ runner.temp }}/constraints.txt
+
       - name: Install dependencies
+        env:
+          PIP_CONSTRAINT: ${{ runner.temp }}/constraints.txt
         run: poetry install --with dev
 
       - name: Run tests
