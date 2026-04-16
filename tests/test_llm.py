@@ -24,11 +24,17 @@ def _setup_response(mock_client, content: str):
 def retrieved_chunks():
     return [
         (
-            {"text": "Inception is a mind-bending thriller.", "metadata": {"movie_title": "Inception"}},
+            {
+                "text": "Inception is a mind-bending thriller.",
+                "metadata": {"movie_title": "Inception"},
+            },
             0.92,
         ),
         (
-            {"text": "The Matrix explores simulated reality.", "metadata": {"movie_title": "The Matrix"}},
+            {
+                "text": "The Matrix explores simulated reality.",
+                "metadata": {"movie_title": "The Matrix"},
+            },
             0.85,
         ),
     ]

@@ -58,7 +58,10 @@ def test_few_shot_is_few_shot_template():
                 "last_failure_str",
             },
         ),
-        (FALLBACK_EVALUATION_PROMPT, {"original_question", "current_step", "fallback_result"}),
+        (
+            FALLBACK_EVALUATION_PROMPT,
+            {"original_question", "current_step", "fallback_result"},
+        ),
     ],
 )
 def test_input_variables(prompt, expected_vars):

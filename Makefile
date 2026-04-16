@@ -18,7 +18,7 @@ install-all:
 
 # Run tests
 test:
-	pytest
+	poetry run pytest tests/ -v
 
 # Format and lint code
 format:

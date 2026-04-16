@@ -1,6 +1,5 @@
 from unittest.mock import patch
 
-import numpy as np
 import pytest
 
 from src.retrievers.dense_retriever import FaissDenseRetriever
@@ -12,7 +11,9 @@ from src.retrievers.in_memory_dense_retriever import InMemoryDenseRetriever
 
 @pytest.fixture
 def in_memory_retriever(fake_embedding_cls):
-    with patch("src.retrievers.in_memory_dense_retriever.EmbeddingModel", fake_embedding_cls):
+    with patch(
+        "src.retrievers.in_memory_dense_retriever.EmbeddingModel", fake_embedding_cls
+    ):
         r = InMemoryDenseRetriever()
     return r
 
@@ -108,7 +109,9 @@ def test_faiss_search_before_add_raises(faiss_retriever):
         faiss_retriever.search("query")
 
 
-def test_faiss_save_load_roundtrip(loaded_faiss, sample_docs, tmp_path, fake_embedding_cls):
+def test_faiss_save_load_roundtrip(
+    loaded_faiss, sample_docs, tmp_path, fake_embedding_cls
+):
     loaded_faiss.save(str(tmp_path))
 
     with patch("src.retrievers.dense_retriever.EmbeddingModel", fake_embedding_cls):

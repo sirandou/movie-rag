@@ -107,9 +107,7 @@ def test_hybrid_strategy_returns_dicts(full_hybrid):
 def test_unknown_strategy_raises():
     r = HybridRetriever(strategy="sparse")
     r.strategy = "unknown"
-    r.add_documents(
-        [{"text": "test", "metadata": {"doc_id": 0, "chunk_id": 0}}]
-    )
+    r.add_documents([{"text": "test", "metadata": {"doc_id": 0, "chunk_id": 0}}])
     with pytest.raises(ValueError, match="Unknown strategy"):
         r.search("test")
 

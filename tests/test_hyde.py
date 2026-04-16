@@ -68,7 +68,9 @@ def test_init_accepts_custom_prompt(base_docs):
     from langchain.prompts import PromptTemplate
     from src.langchain.retrieval.hyde import HyDERetriever
 
-    custom = PromptTemplate(input_variables=["pre_hyde_query"], template="Q: {pre_hyde_query}")
+    custom = PromptTemplate(
+        input_variables=["pre_hyde_query"], template="Q: {pre_hyde_query}"
+    )
     base_retriever = FakeBaseRetriever(docs=base_docs)
     with patch.dict(os.environ, {"OPENAI_API_KEY": "fake-key"}):
         retriever = HyDERetriever(base_retriever=base_retriever, hyde_prompt=custom)
@@ -119,7 +121,9 @@ def test_get_relevant_documents_respects_k(base_docs):
 
 def test_get_relevant_documents_adds_hyde_metadata(base_docs):
     retriever = _make_hyde(base_docs)
-    with patch.object(retriever, "_generate_hypothetical_doc", return_value="The answer is X."):
+    with patch.object(
+        retriever, "_generate_hypothetical_doc", return_value="The answer is X."
+    ):
         results = retriever._get_relevant_documents("Q?")
     for doc in results:
         assert "hyde_query" in doc.metadata
@@ -146,7 +150,9 @@ def test_base_retriever_called_with_hypothetical_not_original(base_docs):
     with patch.dict(os.environ, {"OPENAI_API_KEY": "fake-key"}):
         retriever = HyDERetriever(base_retriever=base)
 
-    with patch.object(retriever, "_generate_hypothetical_doc", return_value="Hypothetical answer."):
+    with patch.object(
+        retriever, "_generate_hypothetical_doc", return_value="Hypothetical answer."
+    ):
         retriever._get_relevant_documents("Original user query")
 
     assert calls == ["Hypothetical answer."]

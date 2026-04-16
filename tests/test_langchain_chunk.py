@@ -24,7 +24,9 @@ def lc_docs():
 def _mock_st():
     """Patch SentenceTransformer so MovieReviewChunker.__init__ doesn't download models."""
     mock_model = MagicMock()
-    mock_model.encode.side_effect = lambda texts: np.random.rand(len(texts), 4).astype("float32")
+    mock_model.encode.side_effect = lambda texts: np.random.rand(len(texts), 4).astype(
+        "float32"
+    )
     return mock_model
 
 

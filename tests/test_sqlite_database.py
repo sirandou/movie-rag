@@ -152,7 +152,9 @@ def test_load_from_csv_inserts_rows(db_with_table, minimal_movies_csv):
 
 def test_load_from_csv_derives_release_year(db_with_table, minimal_movies_csv):
     db_with_table.load_from_csv(minimal_movies_csv)
-    result = db_with_table.query("SELECT release_year FROM movies WHERE movie_title='Movie A'")
+    result = db_with_table.query(
+        "SELECT release_year FROM movies WHERE movie_title='Movie A'"
+    )
     assert result.iloc[0]["release_year"] == 2010
 
 

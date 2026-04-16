@@ -31,7 +31,10 @@ def test_create_dense_retriever(fake_embedding_cls):
 def test_create_hybrid_retriever_default(fake_embedding_cls):
     with (
         patch("src.retrievers.dense_retriever.EmbeddingModel", fake_embedding_cls),
-        patch("src.retrievers.in_memory_dense_retriever.EmbeddingModel", fake_embedding_cls),
+        patch(
+            "src.retrievers.in_memory_dense_retriever.EmbeddingModel",
+            fake_embedding_cls,
+        ),
     ):
         retriever = create_text_retriever({"type": "hybrid"})
     assert isinstance(retriever, HybridRetriever)
@@ -40,7 +43,10 @@ def test_create_hybrid_retriever_default(fake_embedding_cls):
 def test_create_default_is_hybrid(fake_embedding_cls):
     with (
         patch("src.retrievers.dense_retriever.EmbeddingModel", fake_embedding_cls),
-        patch("src.retrievers.in_memory_dense_retriever.EmbeddingModel", fake_embedding_cls),
+        patch(
+            "src.retrievers.in_memory_dense_retriever.EmbeddingModel",
+            fake_embedding_cls,
+        ),
     ):
         retriever = create_text_retriever()
     assert isinstance(retriever, HybridRetriever)
@@ -49,7 +55,10 @@ def test_create_default_is_hybrid(fake_embedding_cls):
 def test_create_none_cfg_is_hybrid(fake_embedding_cls):
     with (
         patch("src.retrievers.dense_retriever.EmbeddingModel", fake_embedding_cls),
-        patch("src.retrievers.in_memory_dense_retriever.EmbeddingModel", fake_embedding_cls),
+        patch(
+            "src.retrievers.in_memory_dense_retriever.EmbeddingModel",
+            fake_embedding_cls,
+        ),
     ):
         retriever = create_text_retriever(None)
     assert isinstance(retriever, HybridRetriever)
@@ -69,7 +78,10 @@ def test_create_hybrid_sparse_only_strategy():
 def test_create_hybrid_custom_alpha(fake_embedding_cls):
     with (
         patch("src.retrievers.dense_retriever.EmbeddingModel", fake_embedding_cls),
-        patch("src.retrievers.in_memory_dense_retriever.EmbeddingModel", fake_embedding_cls),
+        patch(
+            "src.retrievers.in_memory_dense_retriever.EmbeddingModel",
+            fake_embedding_cls,
+        ),
     ):
         retriever = create_text_retriever({"type": "hybrid", "hybrid_alpha": 0.8})
     assert retriever.hybrid_alpha == 0.8

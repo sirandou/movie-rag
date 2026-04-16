@@ -63,7 +63,9 @@ def test_tool_returns_string(db_path):
 
 
 def test_tool_returns_movie_data(db_path):
-    tool_obj, _ = _make_tool(db_path, "SELECT movie_title FROM movies ORDER BY imdb_rating DESC")
+    tool_obj, _ = _make_tool(
+        db_path, "SELECT movie_title FROM movies ORDER BY imdb_rating DESC"
+    )
     tool_fn = tool_obj.get_tool()
     result = tool_fn.invoke({"question": "Top movies by rating"})
     assert "Pulp Fiction" in result
@@ -105,9 +107,7 @@ def test_tool_summarises_large_results(db_path):
 
 
 def test_tool_empty_result_message(db_path):
-    tool_obj, _ = _make_tool(
-        db_path, "SELECT * FROM movies WHERE imdb_rating > 99"
-    )
+    tool_obj, _ = _make_tool(db_path, "SELECT * FROM movies WHERE imdb_rating > 99")
     tool_fn = tool_obj.get_tool()
     result = tool_fn.invoke({"question": "Movies rated above 99"})
     assert "No movies found" in result

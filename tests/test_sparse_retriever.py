@@ -33,7 +33,7 @@ def test_tokenize_removes_short_tokens(retriever):
     tokens = retriever._tokenize("a an the film")
     assert "a" not in tokens
     assert "an" not in tokens
-    assert "the" in tokens   # 3 chars — kept
+    assert "the" in tokens  # 3 chars — kept
     assert "film" in tokens
 
 
@@ -113,7 +113,9 @@ def test_save_load_roundtrip(loaded_retriever, sample_docs, tmp_path):
 
     original_results = loaded_retriever.search("action", k=3)
     loaded_results = new_retriever.search("action", k=3)
-    assert [r[0]["text"] for r in original_results] == [r[0]["text"] for r in loaded_results]
+    assert [r[0]["text"] for r in original_results] == [
+        r[0]["text"] for r in loaded_results
+    ]
 
 
 # --- __repr__ ---
