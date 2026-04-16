@@ -35,4 +35,4 @@ jobs:
         run: poetry install --with dev
 
       - name: Run tests
-        run: poetry run pytest --tb=short -q
+        run: poetry run make test
