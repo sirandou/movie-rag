@@ -197,6 +197,38 @@ class VisualRetriever(CustomBaseRetriever):
         if self.fusion_method == "average":
             print(f"  Alpha: {self.alpha}")
 
+    @classmethod
+    def load_or_build(
+        cls,
+        index_path: str | None,
+        poster_loader,
+        **kwargs,
+    ) -> "VisualRetriever":
+        """
+        Return a VisualRetriever loaded from *index_path* if it exists, otherwise
+        build one from *poster_loader*, save it to *index_path* (when provided),
+        and return it.
+
+        Args:
+            index_path: Directory to read/write the index. Pass None to always build.
+            poster_loader: Any object with a `.load()` method that returns poster docs.
+            **kwargs: Forwarded to the VisualRetriever constructor.
+        """
+        retriever = cls(**kwargs)
+        path = Path(index_path) if index_path else None
+        if path and path.exists():
+            try:
+                retriever.load(str(path))
+                return retriever
+            except Exception as exc:
+                print(f"   Load failed ({exc}), rebuilding...")
+
+        docs = poster_loader.load()
+        retriever.add_documents(docs)
+        if path:
+            retriever.save(str(path))
+        return retriever
+
     def __repr__(self) -> str:
         num_docs = len(self.documents) if self.documents else 0
         return (

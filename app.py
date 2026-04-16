@@ -305,22 +305,17 @@ def build_pipeline(cfg: dict):
         chain.build()
         st.write("✓ RAG chain ready")
 
-        visual_retriever = VisualRetriever(
-            model_name="ViT-B/32", use_text_fusion=True, alpha=0.8
+        st.write("Building visual retriever…")
+        poster_loader = MoviePosterDocumentLoader(
+            cfg["poster_path"], max_movies=cfg["max_posters"]
         )
-        visual_index_path = cfg["visual_index_path"] or None
-        if visual_index_path and Path(visual_index_path).exists():
-            st.write("Loading visual retriever from disk…")
-            visual_retriever.load(visual_index_path)
-        else:
-            st.write(f"Loading {cfg['max_posters']} posters and encoding with CLIP…")
-            poster_loader = MoviePosterDocumentLoader(
-                cfg["poster_path"], max_movies=cfg["max_posters"]
-            )
-            visual_docs = poster_loader.load()
-            visual_retriever.add_documents(visual_docs)
-            if visual_index_path:
-                visual_retriever.save(visual_index_path)
+        visual_retriever = VisualRetriever.load_or_build(
+            index_path=cfg["visual_index_path"] or None,
+            poster_loader=poster_loader,
+            model_name="ViT-B/32",
+            use_text_fusion=True,
+            alpha=0.8,
+        )
         st.write(f"✓ Visual retriever ready ({len(visual_retriever.documents)} posters)")
 
         st.write(f"Creating {cfg['agent_type']} agent…")

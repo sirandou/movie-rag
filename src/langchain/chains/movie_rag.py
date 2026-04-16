@@ -243,16 +243,19 @@ class MovieRAGChain(BaseChain):
 
         if type_path and type_path.exists():
             print(f"\n3. Loading {retriever_type} retriever from {type_path}...")
-            self.custom_retriever.load(str(type_path))
-            return TextRetrieverWrapper(self.custom_retriever, k=k)
-        else:
-            print("\n3. Building custom retriever...")
-            retriever = TextRetrieverWrapper(self.custom_retriever, k=k)
-            retriever.add_documents(chunks)
-            if type_path:
-                self.custom_retriever.save(str(type_path))
-                print(f"   Saved {retriever_type} retriever to {type_path}")
-            return retriever
+            try:
+                self.custom_retriever.load(str(type_path))
+                return TextRetrieverWrapper(self.custom_retriever, k=k)
+            except Exception as exc:
+                print(f"   Load failed ({exc}), rebuilding...")
+
+        print("\n3. Building custom retriever...")
+        retriever = TextRetrieverWrapper(self.custom_retriever, k=k)
+        retriever.add_documents(chunks)
+        if type_path:
+            self.custom_retriever.save(str(type_path))
+            print(f"   Saved {retriever_type} retriever to {type_path}")
+        return retriever
 
     def _create_qa_chain(self) -> None:
         """
