@@ -92,9 +92,43 @@ class ReactAgent(MovieAgent):
             print("=" * 60)
 
         if final_state:
+            messages = final_state["messages"]
+            plan, step_results, step_tools = [], [], []
+
+            i = 0
+            while i < len(messages):
+                msg = messages[i]
+                if msg.type == "ai" and getattr(msg, "tool_calls", None):
+                    # Collect ToolMessages that immediately follow this AI message
+                    j = i + 1
+                    tool_msgs = []
+                    while j < len(messages) and messages[j].type == "tool":
+                        tool_msgs.append(messages[j])
+                        j += 1
+
+                    for tc, tm in zip(msg.tool_calls, tool_msgs):
+                        args_str = next(iter(tc.get("args", {}).values()), "")
+                        plan.append(f"{tc['name']}: {args_str}")
+                        step_results.append(tm.content)
+                        step_tools.append([tc["name"]])
+                    i = j
+                else:
+                    i += 1
+
             return {
-                "answer": final_state["messages"][-1].content,
-                "messages": final_state["messages"],
+                "answer": messages[-1].content,
+                "messages": messages,
+                "plan": plan,
+                "step_results": step_results,
+                "step_tools": step_tools,
+                "failed_steps": [],
             }
         else:
-            return {"answer": "", "messages": []}
+            return {
+                "answer": "",
+                "messages": [],
+                "plan": [],
+                "step_results": [],
+                "step_tools": [],
+                "failed_steps": [],
+            }

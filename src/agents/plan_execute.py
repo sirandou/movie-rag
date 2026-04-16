@@ -15,6 +15,7 @@ class PlanExecuteState(TypedDict):
     plan: List[str]
     step_number: int
     step_results: List[str]
+    step_tools: List[List[str]]
 
 
 class PlanExecuteAgent(MovieAgent):
@@ -94,7 +95,7 @@ class PlanExecuteAgent(MovieAgent):
         for step in steps:
             print(f"  {step}")
 
-        return {"plan": steps, "step_number": 0, "step_results": []}
+        return {"plan": steps, "step_number": 0, "step_results": [], "step_tools": []}
 
     def _execute_step(self, state: PlanExecuteState) -> Dict[str, Any]:
         """Update the step number ahead of execution."""
@@ -141,21 +142,19 @@ class PlanExecuteAgent(MovieAgent):
     def _update_results(self, state: PlanExecuteState) -> Dict[str, Any]:
         """Called after tool execution to update step results."""
         step_results = state["step_results"]
+        step_tools = state["step_tools"]
         messages = state["messages"]
 
-        # Find the index of the last AI message (model response before tool calls)
         last_ai_index = max(
             (i for i, m in enumerate(messages) if m.type == "ai"), default=-1
         )
-        # Gather ToolMessages that come AFTER that AI message (new tool outputs)
         new_tool_messages = [
-            m.content
-            for i, m in enumerate(messages)
-            if m.type == "tool" and i > last_ai_index
+            m for i, m in enumerate(messages) if m.type == "tool" and i > last_ai_index
         ]
 
-        step_results.extend(new_tool_messages)
-        return {"step_results": step_results}
+        step_results.extend(m.content for m in new_tool_messages)
+        step_tools.append([m.name for m in new_tool_messages if hasattr(m, "name")])
+        return {"step_results": step_results, "step_tools": step_tools}
 
     def _synthesize(self, state: PlanExecuteState) -> Dict[str, Any]:
         """Synthesize all step results into final answer."""
@@ -194,6 +193,7 @@ class PlanExecuteAgent(MovieAgent):
                 "plan": [],
                 "step_number": 0,
                 "step_results": [],
+                "step_tools": [],
             },
             stream_mode="values",  # Stream state values
         ):
@@ -217,6 +217,15 @@ class PlanExecuteAgent(MovieAgent):
                 "messages": final_state["messages"],
                 "plan": final_state["plan"],
                 "step_results": final_state["step_results"],
+                "step_tools": final_state.get("step_tools", []),
+                "failed_steps": [],
             }
         else:
-            return {"answer": "", "messages": [], "plan": [], "step_results": []}
+            return {
+                "answer": "",
+                "messages": [],
+                "plan": [],
+                "step_results": [],
+                "step_tools": [],
+                "failed_steps": [],
+            }

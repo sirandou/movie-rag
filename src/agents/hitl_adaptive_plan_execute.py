@@ -27,6 +27,7 @@ class AdaptHITLPlanExecState(TypedDict):
     plan: List[str]
     step_number: int
     step_results: List[str]
+    step_tools: List[List[str]]
     last_tools_results: Dict[str, list]
     retry_count: int
     replan_count: int
@@ -193,6 +194,7 @@ class AdaptHITLPlanExecAgent(MovieAgent):
             "plan": steps,
             "step_number": 0,
             "step_results": [],
+            "step_tools": [],
             "last_tools_results": {"successes": [], "failures": []},
             "retry_count": 0,
             "replan_count": 0,
@@ -548,15 +550,18 @@ class AdaptHITLPlanExecAgent(MovieAgent):
     ) -> Dict[str, Any]:
         """Update step results after successful execution."""
         step_results = state["step_results"]
+        step_tools = state.get("step_tools", [])
         messages = state["messages"]
-        new_tool_messages = [m.content for m in _get_new_tool_messages(messages)]
+        new_tool_messages = _get_new_tool_messages(messages)
 
         # Don't append if even fallback failed
         if state["retry_count"] <= max_tries_per_step:
-            step_results.extend(new_tool_messages)
+            step_results.extend(m.content for m in new_tool_messages)
+        step_tools.append([m.name for m in new_tool_messages if hasattr(m, "name")])
 
         return {
             "step_results": step_results,
+            "step_tools": step_tools,
             "retry_count": 0,
             "fallback_used": False,
             "last_tools_results": {"successes": [], "failures": []},
@@ -574,6 +579,7 @@ class AdaptHITLPlanExecAgent(MovieAgent):
         new_state["failed_steps"] = state["failed_steps"]
         new_state["messages"] = state["messages"]
         new_state["step_results"] = state["step_results"]
+        new_state["step_tools"] = state.get("step_tools", [])
 
         return new_state
 
@@ -625,6 +631,7 @@ class AdaptHITLPlanExecAgent(MovieAgent):
                 "plan": [],
                 "step_number": 0,
                 "step_results": [],
+                "step_tools": [],
                 "last_tools_results": {"successes": [], "failures": []},
                 "retry_count": 0,
                 "replan_count": 0,
@@ -657,6 +664,15 @@ class AdaptHITLPlanExecAgent(MovieAgent):
                 "messages": final_state["messages"],
                 "plan": final_state["plan"],
                 "step_results": final_state["step_results"],
+                "step_tools": final_state.get("step_tools", []),
+                "failed_steps": final_state.get("failed_steps", []),
             }
         else:
-            return {"answer": "", "messages": [], "plan": [], "step_results": []}
+            return {
+                "answer": "",
+                "messages": [],
+                "plan": [],
+                "step_results": [],
+                "step_tools": [],
+                "failed_steps": [],
+            }

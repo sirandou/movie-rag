@@ -261,7 +261,7 @@ def run_polling_loop():
 
 
 def display_answer():
-    """Render the final answer and optional plan breakdown."""
+    """Render the final answer and optional execution summary."""
     result = st.session_state.final_answer
     if not result:
         return
@@ -271,10 +271,32 @@ def display_answer():
         st.markdown(answer)
 
     plan = result.get("plan", [])
+    step_results = result.get("step_results", [])
+    step_tools = result.get("step_tools", [])
+    failed_step_names = {fs["step"] for fs in result.get("failed_steps", [])}
+
     if plan:
-        with st.expander("Execution plan", expanded=False):
-            for i, step in enumerate(plan, 1):
-                st.markdown(f"{i}. {step}")
+        with st.expander("Execution summary", expanded=False):
+            for i, step in enumerate(plan):
+                clean_step = re.sub(r"^\d+\.\s*", "", step)
+                result_text = step_results[i] if i < len(step_results) else None
+                tools = step_tools[i] if i < len(step_tools) else []
+                failed = clean_step in failed_step_names or step in failed_step_names
+
+                if failed:
+                    icon = "❌"
+                elif result_text:
+                    icon = "✅"
+                else:
+                    icon = "⏭️"
+
+                tool_badge = f" `{'`, `'.join(tools)}`" if tools else ""
+                st.markdown(f"**{i + 1}. {icon} {clean_step}**{tool_badge}")
+                if result_text:
+                    st.caption(result_text[:300] + ("…" if len(result_text) > 300 else ""))
+                    if len(result_text) > 300:
+                        with st.expander("Full result", expanded=False):
+                            st.markdown(result_text)
 
 
 def build_pipeline(cfg: dict):

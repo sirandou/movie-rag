@@ -23,3 +23,4 @@
 - What is one of the most well received horror movies of 2025 in terms of IMDb? Find the main actor/actress's name. See what type of movies they have acted in, and what other movies you might like if you're a fan of this actor's movies.
 - I love Normal People. Can you tell me who the main actor was and what type of movies he's acted in? If I like that movie what else might I be interested in?
 - I love the movie where the girl was sick. What was the name? I remember the actress was blonde and passed away in the end.
+- I want a movie with a colorful poster. I want really good reviews for it, with famous actors, and i want it to be heartfelt and no longer than 2 hours
