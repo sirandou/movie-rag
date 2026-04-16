@@ -6,7 +6,7 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-agents-orange.svg)](https://github.com/langchain-ai/langgraph)
 [![LangChain](https://img.shields.io/badge/LangChain-RAG-green.svg)](https://github.com/langchain-ai/langchain)
 
-A multimodal Retrieval-Augmented Generation system over 8,000+ movies with critic reviews, plot summaries, posters, and structured metadata. A LangGraph agent routes each query to one of six specialised tools — text RAG, visual RAG, combined multimodal RAG, SQL, collaborative filtering, and web search — and four agent variants (ReAct → HITL Adaptive) offer a spectrum of autonomy.
+A multimodal Retrieval-Augmented Generation system over 8,000+ movies with critic reviews, plot summaries, posters, and structured metadata. A LangGraph agent routes each query to one of six specialised tools — text RAG, visual RAG, combined multimodal RAG, SQL, collaborative filtering, and web search. Four agent variants (ReAct → HITL Adaptive) offer a spectrum of autonomy.
 
 ---
 
