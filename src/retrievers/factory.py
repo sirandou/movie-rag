@@ -45,3 +45,14 @@ def create_text_retriever(cfg: dict[str, Any] | None = None) -> CustomBaseRetrie
 
     else:
         raise ValueError(f"Unknown retriever type: {retriever_type}")
+
+
+def find_retriever_type(retriever: CustomBaseRetriever) -> str:
+    if isinstance(retriever, FaissDenseRetriever):
+        return "dense"
+    elif isinstance(retriever, BM25SparseRetriever):
+        return "sparse"
+    elif isinstance(retriever, HybridRetriever):
+        return "hybrid"
+    else:
+        raise ValueError(f"Unknown retriever type: {type(retriever)}")

@@ -1,4 +1,5 @@
 from typing import List, Any
+from pathlib import Path
 
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.schema import Document
@@ -13,7 +14,7 @@ from langchain_openai import OpenAIEmbeddings
 from src.langchain.chunk import chunk_documents
 from src.langchain.retrieval.hyde import HyDERetriever
 from src.retrievers.base import CustomBaseRetriever
-from src.retrievers.factory import create_text_retriever
+from src.retrievers.factory import create_text_retriever, find_retriever_type
 from src.langchain.loaders import MovieTextDocumentLoader
 from src.langchain.retrieval.retrievers import TextRetrieverWrapper
 from langchain.prompts.base import BasePromptTemplate
@@ -47,6 +48,7 @@ class MovieRAGChain(BaseChain):
         use_custom_chunk: bool = True,
         chunk_config: dict | None = None,
         embed_model: str = "text-embedding-3-small",
+        index_path: str = None,
         llm_model: str = "gpt-4o-mini",
         llm_temperature: float = 0.0,
         k: int = 5,
@@ -75,6 +77,7 @@ class MovieRAGChain(BaseChain):
             use_custom_chunk (bool): If True, use custom chunking logic.
             chunk_config (dict | None): Additional configuration for chunking.
             embed_model (str): Embedding model name.
+            index_path (str, optional): Base path for saving/loading the custom retriever index.
             llm_model (str): LLM model name (OpenAI).
             llm_temperature (float): Temperature for the LLM.
             k (int): Number of results to retrieve.
@@ -103,6 +106,7 @@ class MovieRAGChain(BaseChain):
         self.vectorstore = None  # Store for score access if needed
         self.qa_chain = None
         self.embed_model = embed_model
+        self.index_path = index_path
         self.llm = ChatOpenAI(model=llm_model, temperature=llm_temperature)
         self.k = k
         self.custom_prompt = custom_prompt
@@ -200,7 +204,7 @@ class MovieRAGChain(BaseChain):
             chunks (List[Document]): The list of document chunks to index.
 
         Returns:
-            None
+            BaseRetriever
         """
         print("\nBuilding base retriever...")
         if self.use_custom_retriever:
@@ -223,18 +227,32 @@ class MovieRAGChain(BaseChain):
     def _build_custom_retriever(
         self, chunks: List[Document], k: int
     ) -> TextRetrieverWrapper:
-        """Build custom retriever wrapped for LangChain."""
-        print("\n3. Building custom retriever...")
+        """Build custom retriever wrapped for LangChain, loading from disk if available.
+
+        Saves/loads from a type-specific subdirectory of index_path (e.g. index_path/dense/).
+        This implicitly validates type compatibility: if the subdirectory doesn't exist,
+        the index is rebuilt for that retriever type.
+        """
 
         if self.custom_retriever is None:
             self.custom_retriever = create_text_retriever(self.retriever_config)
 
-        # Wrap retriever for LangChain (adds scores to metadata automatically)
-        retriever = TextRetrieverWrapper(self.custom_retriever, k=k)
+        # Determine unique index path based on retriever type
+        retriever_type = find_retriever_type(self.custom_retriever)
+        type_path = Path(self.index_path) / retriever_type if self.index_path else None
 
-        # Add LangChain chunks (wrapper handles conversion!)
-        retriever.add_documents(chunks)
-        return retriever
+        if type_path and type_path.exists():
+            print(f"\n3. Loading {retriever_type} retriever from {type_path}...")
+            self.custom_retriever.load(str(type_path))
+            return TextRetrieverWrapper(self.custom_retriever, k=k)
+        else:
+            print("\n3. Building custom retriever...")
+            retriever = TextRetrieverWrapper(self.custom_retriever, k=k)
+            retriever.add_documents(chunks)
+            if type_path:
+                self.custom_retriever.save(str(type_path))
+                print(f"   Saved {retriever_type} retriever to {type_path}")
+            return retriever
 
     def _create_qa_chain(self) -> None:
         """
@@ -335,16 +353,3 @@ class MovieRAGChain(BaseChain):
             ]
 
         return response
-
-    def save(self, path: str) -> None:
-        """Save retriever state."""
-        from pathlib import Path
-
-        path = Path(path)
-        path.mkdir(parents=True, exist_ok=True)
-
-        if self.use_custom_retriever and hasattr(self.retriever, "retriever"):
-            self.retriever.retriever.save(path / "custom_retriever")
-            print(f"✓ Saved custom retriever to {path}")
-        else:
-            print("  LangChain retriever (no save needed - rebuild from data)")

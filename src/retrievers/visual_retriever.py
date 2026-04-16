@@ -3,7 +3,7 @@ from typing import Literal
 
 import faiss
 import numpy as np
-from path import Path
+from pathlib import Path
 
 from src.retrievers.base import CustomBaseRetriever
 from src.utils.clip_embeddings import CLIPEmbedding

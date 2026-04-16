@@ -35,6 +35,8 @@ DEFAULT_PLOTS = "/Users/saghar/Desktop/movie-rag/datasets/rotten-tomatoes-review
 DEFAULT_REVIEWS = "/Users/saghar/Desktop/movie-rag/datasets/rotten-tomatoes-reviews/prep/reviews_w_movies_full.csv"
 DEFAULT_SQL = "/Users/saghar/Desktop/movie-rag/datasets/rotten-tomatoes-reviews/prep/movies_meta.db"
 DEFAULT_POSTERS = "/Users/saghar/Desktop/movie-rag/datasets/rotten-tomatoes-reviews/prep/movie_posters.csv"
+DEFAULT_INDEX_PATH = "/Users/saghar/Desktop/movie-rag/datasets/rotten-tomatoes-reviews/prep/retriever_index"
+DEFAULT_VISUAL_INDEX_PATH = "/Users/saghar/Desktop/movie-rag/datasets/rotten-tomatoes-reviews/prep/visual_index"
 
 ANSI_RE = re.compile(r"\033\[[0-9;]*m")
 
@@ -297,21 +299,29 @@ def build_pipeline(cfg: dict):
             reranker_cfg={"type": "llm"},
             embed_model="text-embedding-3-small",
             llm_model="gpt-4o-mini",
+            index_path=cfg["index_path"] or None,
         )
 
         chain.build()
         st.write("✓ RAG chain ready")
 
-        st.write(f"Loading {cfg['max_posters']} posters and encoding with CLIP…")
-        poster_loader = MoviePosterDocumentLoader(
-            cfg["poster_path"], max_movies=cfg["max_posters"]
-        )
-        visual_docs = poster_loader.load()
         visual_retriever = VisualRetriever(
             model_name="ViT-B/32", use_text_fusion=True, alpha=0.8
         )
-        visual_retriever.add_documents(visual_docs)
-        st.write(f"✓ Visual retriever ready ({len(visual_docs)} posters)")
+        visual_index_path = cfg["visual_index_path"] or None
+        if visual_index_path and Path(visual_index_path).exists():
+            st.write("Loading visual retriever from disk…")
+            visual_retriever.load(visual_index_path)
+        else:
+            st.write(f"Loading {cfg['max_posters']} posters and encoding with CLIP…")
+            poster_loader = MoviePosterDocumentLoader(
+                cfg["poster_path"], max_movies=cfg["max_posters"]
+            )
+            visual_docs = poster_loader.load()
+            visual_retriever.add_documents(visual_docs)
+            if visual_index_path:
+                visual_retriever.save(visual_index_path)
+        st.write(f"✓ Visual retriever ready ({len(visual_retriever.documents)} posters)")
 
         st.write(f"Creating {cfg['agent_type']} agent…")
         AgentClass = AGENT_CLASSES[cfg["agent_type"]]
@@ -376,6 +386,8 @@ with st.sidebar:
     reviews_path = st.text_input("Reviews CSV", DEFAULT_REVIEWS)
     sql_path = st.text_input("SQLite DB", DEFAULT_SQL)
     poster_path = st.text_input("Posters CSV", DEFAULT_POSTERS)
+    index_path = st.text_input("Retriever Index Path", DEFAULT_INDEX_PATH)
+    visual_index_path = st.text_input("Visual Index Path", DEFAULT_VISUAL_INDEX_PATH)
 
     st.divider()
 
@@ -413,6 +425,8 @@ if init_clicked:
         "reviews_path": reviews_path,
         "sql_path": sql_path,
         "poster_path": poster_path,
+        "index_path": index_path,
+        "visual_index_path": visual_index_path,
         "max_movies": max_movies,
         "max_posters": max_posters,
         "agent_type": agent_type,
