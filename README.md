@@ -86,6 +86,29 @@ export TAVILY_API_KEY="..."
 streamlit run app.py
 ```
 
+## Development
+
+```bash
+make test            # pytest
+make format          # Ruff format + lint
+make jupyter         # Start Jupyter Lab
+make clean           # Remove cache and temp files
+make setup-hooks     # Install pre-commit hooks
+```
+
+Poetry dependency groups (`pyproject.toml`):
+
+| Group | Contents |
+|---|---|
+| `base` | numpy, pandas, scikit-learn, matplotlib |
+| `ml` | torch, lightning, wandb |
+| `rag-agent` | langchain, langgraph, faiss, sentence-transformers, clip, ragas, tavily |
+| `dev` | pytest, ruff, black, mypy, isort |
+
+```bash
+poetry add --group <group> <package>
+```
+
 ## Example Queries
 
 | Query | Routes to | Notes |
@@ -110,28 +133,7 @@ streamlit run app.py
 
 ## Evaluation
 
-RAGAS metrics over 5 held-out movie questions ([`notebooks/9-selfrag-ragas.ipynb`](notebooks/9-selfrag-ragas.ipynb)):
-
-| Chain variant | Faithfulness | Answer Relevancy |
-|---|---|---|
-| Dense only | 0.88 | 0.97 |
-| Dense + HyDE + LLM rerank (default) | **0.89** | 0.96 |
-
-Answer relevancy excludes two questions where RAGAS returned 0.0 on ambiguous prompts. Context precision and recall require ground-truth context labels and were not computed.
-
-## Key Design Decisions
-
-**Dense retrieval + HyDE as the default.** Movie questions here are mostly thematic or descriptive, where dense semantic similarity beats keyword overlap. HyDE generates a hypothetical answer and searches with that embedding, which closes the gap on vague prompts more effectively than tuning a hybrid BM25/dense weighting. Hybrid, sparse, and BM25-only retrievers remain available through `retriever_config`.
-
-**LLM reranker over cross-encoder.** An LLM scoring documents 0–10 captures nuanced relevance (e.g. *is this review actually about the plot?*) that a generic cross-encoder misses, and an LLM is already in the request path. Cross-encoder (`ms-marco-MiniLM-L-6-v2`) and Cohere rerankers are drop-in alternatives via `reranker_cfg`.
-
-**LangGraph over `AgentExecutor`.** Exposing the agent as an explicit state machine makes retry edges, web-search fallbacks, and human-in-the-loop pauses first-class constructs. All four agent variants share the same tool set and differ only in graph topology.
-
-**Specialised tools over one generic retriever.** Query types are orthogonal — plot themes, visual style, numeric filters, rating similarity — and each has a different ideal index and synthesis prompt. Each tool's docstring scopes its own use case so the LLM can route correctly.
-
-**Sentence-based chunking.** Groups five sentences per chunk and treats each review as a natural boundary. Fixed 200-token chunks fragmented reviews mid-sentence; 800-token chunks diluted retrieval precision. Fixed-size and semantic chunking are also implemented.
-
-**CLIP with weighted-average fusion (α=0.8).** Fuses 0.8 × poster embedding + 0.2 × metadata text embedding. Pure visual embeddings missed title/genre context; pure text embeddings ignored the visual prompt. Concatenation fusion is also supported.
+Exploratory RAGAS runs over a small 5-question set live in [`notebooks/9-selfrag-ragas.ipynb`](notebooks/9-selfrag-ragas.ipynb), comparing the basic dense chain, dense + HyDE + LLM rerank, and a Self-RAG wrapper. Faithfulness and answer relevancy look comparable across variants on recommendation questions; the basic chain returns non-answers on the analytical prompts (Nolan's style, Tarantino vs Scorsese), which HyDE + rerank partially recovers. Context precision and recall could not be computed. A larger held-out set is the natural next step before drawing conclusions.
 
 ## Features
 
@@ -191,7 +193,7 @@ src/
 ├── langchain/
 │   ├── chains/     # MovieRAGChain, multimodal, self-RAG, streaming
 │   ├── retrieval/  # HyDE, rerankers, retriever wrappers
-│   ├── prompts.py  # System prompts (QA, visual, combined, SQL, planning)
+│   ├── prompts.py
 │   ├── observability.py
 │   └── ragas.py
 ├── agents/
@@ -209,28 +211,14 @@ tests/              # Pytest suite
 app.py              # Streamlit UI
 ```
 
-## Development
+## Key Design Decisions
 
-```bash
-make test            # pytest
-make format          # Ruff format + lint
-make jupyter         # Start Jupyter Lab
-make clean           # Remove cache and temp files
-make setup-hooks     # Install pre-commit hooks
-```
-
-Poetry dependency groups (`pyproject.toml`):
-
-| Group | Contents |
-|---|---|
-| `base` | numpy, pandas, scikit-learn, matplotlib |
-| `ml` | torch, lightning, wandb |
-| `rag-agent` | langchain, langgraph, faiss, sentence-transformers, clip, ragas, tavily |
-| `dev` | pytest, ruff, black, mypy, isort |
-
-```bash
-poetry add --group <group> <package>
-```
+- **Dense + HyDE over hybrid.** Thematic queries dominate this dataset; HyDE closes the gap on vague prompts more cheaply than tuning a BM25/dense mix. Hybrid and sparse remain available via `retriever_config`.
+- **LLM reranker over cross-encoder.** Captures nuanced relevance (*is this review actually about the plot?*) and reuses the LLM already in the request path. Cross-encoder and Cohere are drop-in alternatives.
+- **LangGraph over `AgentExecutor`.** Explicit state machines make retry edges, fallbacks, and HITL pauses first-class. All four agent variants share the same tools and differ only in graph topology.
+- **Specialised tools over one generic retriever.** Orthogonal query types (plot, visual, numeric, taste) each get an index and synthesis prompt suited to their format.
+- **Sentence-based chunking.** Respects review boundaries; fixed token chunks fragmented or diluted context.
+- **CLIP image+text fusion (α=0.8).** Title/genre context resolves ambiguous posters while keeping visual queries visual-first.
 
 ## License
 
