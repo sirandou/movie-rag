@@ -230,3 +230,7 @@ datasets/*/prep/posters/*
 # MacOS
 .DS_Store
 *.DS_Store
+
+# Claude code
+.claude/worktrees/
+.claude/worktrees/*
