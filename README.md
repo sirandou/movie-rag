@@ -39,9 +39,21 @@ flowchart TB
     IDX3[("SQLite<br/>movies_meta.db")]
     IDX4[("Movie × Movie<br/>similarity matrix")]
 
-    S1["plots.csv<br/>reviews.csv"] -. "sentence chunking<br/>OpenAI text-embedding-3-small" .-> IDX1
-    S2["posters/"] -. "CLIP ViT-B/32<br/>image + text fusion (α=0.8)" .-> IDX2
-    S3["reviews.csv"] -. "critic × movie matrix<br/>cosine similarity" .-> IDX4
+    %% Use invisible links to push sources below indexes
+    IDX1 ~~~ S1
+    IDX2 ~~~ S2
+    IDX3 ~~~ S3
+    IDX4 ~~~ S4
+
+    S1[/"plots.csv<br/>reviews.csv"/]
+    S2[/"posters/"/]
+    S3[/"metadata.csv"/]
+    S4[/"plots.csv<br/>reviews.csv"/]
+
+    S1 -. "sentence chunking<br/>OpenAI text-embedding-3-small" .-> IDX1
+    S2 -. "CLIP ViT-B/32<br/>image + text fusion (α=0.8)" .-> IDX2
+    S3 -. "metadata per movie table" .-> IDX3
+    S4 -. "critic × movie matrix<br/>cosine similarity" .-> IDX4
 
     UI["Streamlit UI"] <--> AG
 ```
