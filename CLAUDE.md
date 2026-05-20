@@ -30,8 +30,14 @@ Movie RAG is a Retrieval-Augmented Generation system for movie information built
 - `document_creators.py` — Converts CSV files (Rotten Tomatoes reviews, OMDB plots) into LangChain `Document` objects
 - `chunk.py` — Custom sentence-level chunking logic
 
+### Utils Layer (`src/utils/`)
+- `embeddings.py` — `EmbeddingModel`: unified wrapper for Sentence-Transformers and OpenAI embedding providers; handles batching and token-limit chunking for OpenAI
+- `clip_embeddings.py` — `CLIPEmbedding`: CLIP (ViT-B/32 or ViT-B/16) model wrapper for encoding images and text into a shared embedding space
+- `llm.py` — `SimpleLLM`: lightweight OpenAI chat completions wrapper used by the in-memory retriever's `generate()` method
+
 ### Retriever Layer (`src/retrievers/`)
 All retrievers inherit from `CustomBaseRetriever` (`base.py`) and share the interface: `add_documents`, `search`, `save`, `load`.
+- **In-Memory Dense** (`in_memory_dense_retriever.py`): cosine-similarity search over numpy embeddings; no FAISS dependency; used in early notebooks
 - **Dense** (`dense_retriever.py`): FAISS + Sentence-Transformers or OpenAI embeddings
 - **Sparse** (`sparse_retriever.py`): BM25 keyword search
 - **Hybrid** (`hybrid_retriever.py`): Weighted combination of dense + sparse (configurable `alpha`)
@@ -39,6 +45,9 @@ All retrievers inherit from `CustomBaseRetriever` (`base.py`) and share the inte
 - `factory.py` — `create_text_retriever()` instantiates any retriever from a config dict
 
 ### RAG Chain Layer (`src/langchain/`)
+- `chains/base.py` — `BaseChain`: abstract base class all chain subclasses implement (`build`, `query`)
+- `loaders.py` — `MovieTextDocumentLoader` + `MoviePosterDocumentLoader`: LangChain `BaseLoader` wrappers around `document_creators` functions
+- `chunk.py` — `chunk_documents()`: LangChain adapter over `src/data/chunk.py`; converts `Document` objects to/from the dict format the core chunker expects
 - `chains/movie_rag.py` — `MovieRAGChain`: main pipeline (load docs → chunk → build retriever → optional HyDE/reranking → QA chain)
 - `retrieval/hyde.py` — HyDE retriever: LLM generates a hypothetical answer, then searches with that
 - `retrieval/reranker.py` — Cross-encoder reranking (Cohere or sentence-transformers)

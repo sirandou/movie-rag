@@ -4,7 +4,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.agents.tools.collaborative_filtering import CollaborativeFilteringTool, normalize_rating
+from src.agents.tools.collaborative_filtering import (
+    CollaborativeFilteringTool,
+    normalize_rating,
+)
 
 
 # =============================================================================
@@ -30,8 +33,8 @@ from src.agents.tools.collaborative_filtering import CollaborativeFilteringTool,
         ("C-", 6.0),
         ("D", 5.0),
         ("F", 3.0),
-        ("7.5", 7.5),   # already 0-10
-        ("85", 8.5),    # 0-100 scale, gets divided by 10
+        ("7.5", 7.5),  # already 0-10
+        ("85", 8.5),  # 0-100 scale, gets divided by 10
         ("10", 10.0),
     ],
 )
@@ -132,7 +135,9 @@ def test_get_tool_returns_callable(cf_tool):
 
 def test_recommend_known_movie_returns_json(cf_tool):
     tool_fn = cf_tool.get_tool()
-    result = tool_fn.invoke({"movie_titles": "Inception (2010)", "num_recommendations": 2})
+    result = tool_fn.invoke(
+        {"movie_titles": "Inception (2010)", "num_recommendations": 2}
+    )
     data = json.loads(result)
     assert isinstance(data, dict)
 
@@ -157,9 +162,7 @@ def test_recommend_unknown_movie_warns(cf_tool):
 
 def test_recommend_unknown_movie_error_message(cf_tool):
     tool_fn = cf_tool.get_tool()
-    result = json.loads(
-        tool_fn.invoke({"movie_titles": "ZZZZZZZ_NO_MATCH_ZZZZZZZ"})
-    )
+    result = json.loads(tool_fn.invoke({"movie_titles": "ZZZZZZZ_NO_MATCH_ZZZZZZZ"}))
     has_warning = result.get("warnings", "") != ""
     has_error = "error" in result
     assert has_warning or has_error

@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain.schema import Document
+from src.langchain.chains.movie_rag import MovieRAGChain
 
 from src.langchain.retrieval.retrievers import TextRetrieverWrapper
 from src.retrievers.sparse_retriever import BM25SparseRetriever
@@ -26,7 +27,9 @@ def wrapper(loaded_bm25):
 
 @pytest.fixture
 def langchain_docs(sample_docs):
-    return [Document(page_content=d["text"], metadata=d["metadata"]) for d in sample_docs]
+    return [
+        Document(page_content=d["text"], metadata=d["metadata"]) for d in sample_docs
+    ]
 
 
 def test_wrapper_add_converts_to_custom_format(langchain_docs):
@@ -77,12 +80,12 @@ def test_wrapper_preserves_original_metadata(langchain_docs):
 # MovieRAGChain
 # =============================================================================
 
-from src.langchain.chains.movie_rag import MovieRAGChain
-
 
 @pytest.fixture
 def fake_lc_docs(sample_docs):
-    return [Document(page_content=d["text"], metadata=d["metadata"]) for d in sample_docs]
+    return [
+        Document(page_content=d["text"], metadata=d["metadata"]) for d in sample_docs
+    ]
 
 
 @pytest.fixture
@@ -141,7 +144,9 @@ def test_build_sets_qa_chain(base_chain_kwargs, fake_lc_docs):
 
     with (
         patch("src.langchain.chains.movie_rag.ChatOpenAI"),
-        patch("src.langchain.chains.movie_rag.MovieTextDocumentLoader") as mock_loader_cls,
+        patch(
+            "src.langchain.chains.movie_rag.MovieTextDocumentLoader"
+        ) as mock_loader_cls,
         patch("src.langchain.chains.movie_rag.RetrievalQA") as mock_rqa,
     ):
         mock_loader_cls.return_value.load.return_value = fake_lc_docs
@@ -158,7 +163,9 @@ def test_build_sets_retriever(base_chain_kwargs, fake_lc_docs):
 
     with (
         patch("src.langchain.chains.movie_rag.ChatOpenAI"),
-        patch("src.langchain.chains.movie_rag.MovieTextDocumentLoader") as mock_loader_cls,
+        patch(
+            "src.langchain.chains.movie_rag.MovieTextDocumentLoader"
+        ) as mock_loader_cls,
         patch("src.langchain.chains.movie_rag.RetrievalQA") as mock_rqa,
     ):
         mock_loader_cls.return_value.load.return_value = fake_lc_docs
@@ -184,7 +191,9 @@ def _built_chain(base_chain_kwargs, fake_lc_docs, mock_answer, k=3):
 
     with (
         patch("src.langchain.chains.movie_rag.ChatOpenAI"),
-        patch("src.langchain.chains.movie_rag.MovieTextDocumentLoader") as mock_loader_cls,
+        patch(
+            "src.langchain.chains.movie_rag.MovieTextDocumentLoader"
+        ) as mock_loader_cls,
         patch("src.langchain.chains.movie_rag.RetrievalQA") as mock_rqa,
     ):
         mock_loader_cls.return_value.load.return_value = fake_lc_docs

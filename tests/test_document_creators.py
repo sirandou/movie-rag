@@ -1,8 +1,11 @@
-import numpy as np
 import pandas as pd
 import pytest
 
-from src.data.document_creators import create_plot_docs, create_poster_docs, create_review_docs
+from src.data.document_creators import (
+    create_plot_docs,
+    create_poster_docs,
+    create_review_docs,
+)
 
 
 @pytest.fixture
@@ -117,7 +120,9 @@ def test_create_review_docs_aggregates_by_movie(reviews_df):
         ["movie_title"],
         ["rotten_tomatoes_link", "movie_title", "release_year"],
     )
-    inception_doc = next(d for d in docs if d["metadata"].get("movie_title") == "Inception")
+    inception_doc = next(
+        d for d in docs if d["metadata"].get("movie_title") == "Inception"
+    )
     assert "Mind-bending." in inception_doc["page_content"]
     assert "A masterpiece." in inception_doc["page_content"]
 
@@ -166,7 +171,9 @@ def test_create_poster_docs_truncates_long_text():
         {
             "movie_title": ["Very Long Film Title That Goes On And On"],
             "release_year": [2020],
-            "genres": ["Drama, Comedy, Romance, Thriller, Action, Sci-Fi, Horror, Mystery"],
+            "genres": [
+                "Drama, Comedy, Romance, Thriller, Action, Sci-Fi, Horror, Mystery"
+            ],
             "directors": ["Director One, Director Two, Director Three"],
             "actors": [long_actors],
             "poster_path": ["/poster.jpg"],

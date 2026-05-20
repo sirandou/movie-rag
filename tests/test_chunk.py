@@ -59,7 +59,9 @@ def test_sentence_chunk_returns_list(chunker):
 
 
 def test_sentence_chunk_review_text(chunker):
-    text = "Movie title: Test\nReview: Great film.\nReview: Loved it.\nReview: Must watch."
+    text = (
+        "Movie title: Test\nReview: Great film.\nReview: Loved it.\nReview: Must watch."
+    )
     result = chunker.chunk_by_sentences(text, sentences_per_chunk=2)
     assert len(result) >= 1
     assert all(isinstance(c, str) for c in result)
